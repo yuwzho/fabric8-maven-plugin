@@ -17,17 +17,16 @@ package io.fabric8.maven.plugin.mojo.build;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.fabric8.kubernetes.api.Annotations;
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.maven.core.config.HelmConfig;
-import io.fabric8.maven.core.util.MavenUtil;
+import io.fabric8.maven.core.util.*;
+import io.fabric8.maven.core.util.kubernetes.Fabric8Annotations;
+import io.fabric8.maven.core.util.kubernetes.KubernetesHelper;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
-import io.fabric8.utils.Files;
-import io.fabric8.utils.IOHelpers;
-import io.fabric8.utils.Strings;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Developer;
 import org.apache.maven.model.Scm;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -44,6 +43,7 @@ import org.codehaus.plexus.archiver.tar.TarArchiver;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -117,7 +117,7 @@ public class HelmMojo extends AbstractFabric8Mojo {
         return ret != null ? ret : project.getArtifactId();
     }
 
-    private File prepareOutputDir(HelmConfig.HelmType type) {
+    private File prepareOutputDir(HelmConfig.HelmType type) throws MojoExecutionException {
         String dir = getProperty("fabric8.helm.outputDir");
         if (dir == null) {
             dir = String.format("%s/fabric8/helm/%s/%s",
@@ -126,10 +126,14 @@ public class HelmMojo extends AbstractFabric8Mojo {
                                 getChartName());
         }
         File dirF = new File(dir);
-        if (Files.isDirectory(dirF)) {
-            Files.recursiveDelete(dirF);
+        try {
+            if (dirF.isFile()) {
+                FileUtils.deleteDirectory(dirF);
+            }
+            return dirF;
+        } catch (IOException e) {
+            throw new MojoExecutionException("Cannot delete directory " + dir + ": " + e,e);
         }
-        return dirF;
     }
 
     private File checkSourceDir(String chartName, HelmConfig.HelmType type) {
@@ -153,8 +157,8 @@ public class HelmMojo extends AbstractFabric8Mojo {
 
     private List<HelmConfig.HelmType> getHelmTypes() {
         String helmTypeProp = getProperty("fabric8.helm.type");
-        if (!Strings.isNullOrBlank(helmTypeProp)) {
-            List<String> propTypes = Strings.splitAsList(helmTypeProp, ",");
+        if (StringUtils.isNotBlank(helmTypeProp)) {
+            String[] propTypes = StringUtils.split(helmTypeProp, ",");
             List<HelmConfig.HelmType> ret = new ArrayList<>();
             for (String prop : propTypes) {
                 ret.add(HelmConfig.HelmType.valueOf(prop.trim().toLowerCase()));
@@ -177,12 +181,12 @@ public class HelmMojo extends AbstractFabric8Mojo {
 
         String iconUrl = findIconURL();
         getLog().debug("Found icon: " + iconUrl);
-        if (Strings.isNotBlank(iconUrl)) {
+        if (StringUtils.isNotBlank(iconUrl)) {
             chart.setIcon(iconUrl);
         }
         File outputChartFile = new File(outputDir, "Chart.yaml");
         try {
-            KubernetesHelper.saveYaml(chart, outputChartFile);
+            ResourceUtil.save(outputChartFile, chart, ResourceFileType.yaml);
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to save chart " + outputChartFile + ": " + e, e);
         }
@@ -193,20 +197,20 @@ public class HelmMojo extends AbstractFabric8Mojo {
         if (kubernetesManifest != null && kubernetesManifest.isFile()) {
             Object dto = null;
             try {
-                dto = KubernetesHelper.loadYaml(kubernetesManifest, KubernetesResource.class);
+                dto = ResourceUtil.load(kubernetesManifest, KubernetesResource.class);
             } catch (IOException e) {
                 throw new MojoExecutionException("Failed to load kubernetes YAML " + kubernetesManifest + ". " + e, e);
             }
             if (dto instanceof HasMetadata) {
-                answer = KubernetesHelper.getOrCreateAnnotations((HasMetadata) dto).get(Annotations.Builds.ICON_URL);
+                answer = KubernetesHelper.getOrCreateAnnotations((HasMetadata) dto).get(Fabric8Annotations.ICON_URL.value());
             }
-            if (Strings.isNullOrBlank(answer) && dto instanceof KubernetesList) {
+            if (StringUtils.isBlank(answer) && dto instanceof KubernetesList) {
                 KubernetesList list = (KubernetesList) dto;
                 List<HasMetadata> items = list.getItems();
                 if (items != null) {
                     for (HasMetadata item : items) {
-                        answer = KubernetesHelper.getOrCreateAnnotations(item).get(Annotations.Builds.ICON_URL);
-                        if (Strings.isNotBlank(answer)) {
+                        answer = KubernetesHelper.getOrCreateAnnotations(item).get(Fabric8Annotations.ICON_URL.value());
+                        if (StringUtils.isNotBlank(answer)) {
                             break;
                         }
                     }
@@ -226,14 +230,14 @@ public class HelmMojo extends AbstractFabric8Mojo {
             for (File file : files) {
                 String name = file.getName();
                 if (name.endsWith(".yml")) {
-                    name = Strings.stripSuffix(name, ".yml") + ".yaml";
+                    name = FileUtil.stripPostfix(name, ".yml") + ".yaml";
                 }
                 File targetFile = new File(templatesDir, name);
                 try {
                     // lets escape any {{ or }} characters to avoid creating invalid templates
-                    String text = IOHelpers.readFully(file);
+                    String text = FileUtils.readFileToString(file, Charset.defaultCharset());
                     text = escapeYamlTemplate(text);
-                    IOHelpers.writeFully(targetFile, text);
+                    FileUtils.write(targetFile, text, Charset.defaultCharset());
                 } catch (IOException e) {
                     throw new MojoExecutionException("Failed to copy manifest files from " + file +
                             " to " + targetFile + ": " + e, e);
@@ -309,7 +313,7 @@ public class HelmMojo extends AbstractFabric8Mojo {
         File[] files = sourceDir.listFiles(filter);
         if (files != null && files.length > 0) {
             File sourceFile = files[0];
-            Files.copy(sourceFile, outFile);
+            FileUtils.copyFile(sourceFile, outFile);
         }
         if (files.length > 1) {
             log.warn("Found %d of %s files. Using first one %s", files.length, outFile, files[0]);
@@ -382,7 +386,7 @@ public class HelmMojo extends AbstractFabric8Mojo {
                     for (Developer developer : developers) {
                         String email = developer.getEmail();
                         String devName = developer.getName();
-                        if (Strings.isNotBlank(devName) || Strings.isNotBlank(email)) {
+                        if (StringUtils.isNotBlank(devName) || StringUtils.isNotBlank(email)) {
                             Maintainer maintainer = new Maintainer(devName, email);
                             maintainers1.add(maintainer);
                         }

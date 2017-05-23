@@ -46,7 +46,7 @@ If you wish to switch to a different VM driver you can specify the `fabric8.clus
 
 [source,sh,subs="attributes"]
 ----
-mvn fabric8:cluster-start -Pfmp-snapshot -Dfabric8.cluster.driver=virtualbox
+mvn fabric8:cluster-start -Dfabric8.cluster.driver=virtualbox
 ----
 
 Note that we highly recommend using the default VM drivers (`hyperv` on Windows, `xhyve` on OS X and `kvm` on Linux) as they tend to work better and use less resources on your laptop than the alternatives.

@@ -23,7 +23,9 @@ import java.util.List;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.maven.core.config.ProbeConfig;
 import io.fabric8.maven.core.util.Commandline;
-import io.fabric8.utils.Strings;
+
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 
 /**
  * @author roland
@@ -97,7 +99,7 @@ public class ProbeHandler {
     }
 
     private ExecAction getExecAction(String execCmd) {
-        if (Strings.isNotBlank(execCmd)) {
+        if (isNotBlank(execCmd)) {
             List<String> splitCommandLine = Commandline.translateCommandline(execCmd);
             if (!splitCommandLine.isEmpty()) {
                 return new ExecAction(splitCommandLine);

@@ -16,7 +16,6 @@
 
 package io.fabric8.maven.enricher.standard;
 
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
@@ -26,19 +25,17 @@ import io.fabric8.kubernetes.api.model.PodTemplateSpec;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentSpec;
 import io.fabric8.maven.core.util.Configs;
-import io.fabric8.maven.core.util.KubernetesResourceUtil;
+import io.fabric8.maven.core.util.kubernetes.KubernetesHelper;
+import io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
-import io.fabric8.utils.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static io.fabric8.kubernetes.api.KubernetesHelper.getKind;
-import static io.fabric8.utils.Lists.notNullList;
 
 /**
  * Merges local resources with dependent resources which have the same name.
@@ -59,12 +56,12 @@ public class MergeEnricher extends BaseEnricher {
 
     @Override
     public void adapt(KubernetesListBuilder builder) {
-        List<HasMetadata> items = notNullList(builder.getItems());
+        List<HasMetadata> items = builder.buildItems();
         Map<String, Map<String, HasMetadata>> kindMaps = new HashMap<>();
 
         List<HasMetadata> removeList = new ArrayList<>();
         for (HasMetadata item : items) {
-            String kind = getKind(item);
+            String kind = KubernetesHelper.getKind(item);
             String name = KubernetesHelper.getName(item);
             Map<String, HasMetadata> map = kindMaps.get(kind);
             if (map == null) {
@@ -123,7 +120,7 @@ public class MergeEnricher extends BaseEnricher {
                         }
                     }
                 }
-                log.info("Merging 2 resources for " + getKind(item1) + " " + KubernetesHelper.getName(item1) + " from " + KubernetesResourceUtil.getSourceUrlAnnotation(item1) + " and " + KubernetesResourceUtil.getSourceUrlAnnotation(item2) + " and removing " + KubernetesResourceUtil.getSourceUrlAnnotation(answer));
+                log.info("Merging 2 resources for " + KubernetesHelper.getKind(item1) + " " + KubernetesHelper.getName(item1) + " from " + KubernetesResourceUtil.getSourceUrlAnnotation(item1) + " and " + KubernetesResourceUtil.getSourceUrlAnnotation(item2) + " and removing " + KubernetesResourceUtil.getSourceUrlAnnotation(answer));
                 return answer;
             }
             /*
@@ -136,7 +133,7 @@ public class MergeEnricher extends BaseEnricher {
         // we expect lots of duplicates when making an app catalog as we have the composites and individual manifests
         try {
             if (!getContext().runningWithGoal("fabric8:app-catalog")) {
-                log.warn("Duplicate resources for %s %s from %s and %s", getKind(item1), KubernetesHelper.getName(item1), KubernetesResourceUtil.getSourceUrlAnnotation(item1), KubernetesResourceUtil.getSourceUrlAnnotation(item2));
+                log.warn("Duplicate resources for %s %s from %s and %s", KubernetesHelper.getKind(item1), KubernetesHelper.getName(item1), KubernetesResourceUtil.getSourceUrlAnnotation(item1), KubernetesResourceUtil.getSourceUrlAnnotation(item2));
             }
         } catch (MojoExecutionException e) {
             log.warn("Failed to check if generated an app-catalog: %s", e);
@@ -152,9 +149,9 @@ public class MergeEnricher extends BaseEnricher {
     // rather than a full complete manifest
     // we could also use an annotation?
     private boolean isLocalCustomisation(PodSpec podSpec) {
-        List<Container> containers = notNullList(podSpec.getContainers());
+        List<Container> containers = podSpec.getContainers();
         for (Container container : containers) {
-            if (Strings.isNotBlank(container.getImage())) {
+            if (StringUtils.isNotBlank(container.getImage())) {
                 return false;
             }
         }

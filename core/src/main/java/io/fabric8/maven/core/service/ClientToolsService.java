@@ -17,10 +17,8 @@ package io.fabric8.maven.core.service;
 
 import java.io.File;
 
-import io.fabric8.kubernetes.api.Controller;
 import io.fabric8.maven.core.util.ProcessUtil;
 import io.fabric8.maven.docker.util.Logger;
-import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
  * A service that manages the client tools.
@@ -30,27 +28,17 @@ public class ClientToolsService {
 
     private Logger log;
 
-    private Controller controller;
-
-    public ClientToolsService(Controller controller, Logger log) {
-        this.controller = controller;
+    public ClientToolsService(Logger log) {
         this.log = log;
     }
 
     public File getKubeCtlExecutable() {
-        OpenShiftClient openShiftClient = controller.getOpenShiftClientOrNull();
-        String command = openShiftClient != null ? "oc" : "kubectl";
-
-        String missingCommandMessage;
-        File file = ProcessUtil.findExecutable(log, command);
-        if (file == null && command.equals("oc")) {
-            file = ProcessUtil.findExecutable(log, command);
-            missingCommandMessage = "commands oc or kubectl";
-        } else {
-            missingCommandMessage = "command " + command;
+        File file = ProcessUtil.findExecutable(log, "kubectl");
+        if (file == null) {
+            file = ProcessUtil.findExecutable(log, "oc");
         }
         if (file == null) {
-            throw new IllegalStateException("Could not find " + missingCommandMessage +
+            throw new IllegalStateException("Could not find kubectl (or oc)" +
                     ". Please try running `mvn fabric8:install` to install the necessary binaries and ensure they get added to your $PATH");
         }
         return file;

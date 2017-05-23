@@ -25,8 +25,7 @@ import io.fabric8.maven.core.util.SpringBootProperties;
 import io.fabric8.maven.core.util.SpringBootUtil;
 import io.fabric8.maven.enricher.api.AbstractHealthCheckEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
-import io.fabric8.utils.PropertiesHelper;
-import io.fabric8.utils.Strings;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Enriches spring-boot containers with health checks if the actuator module is present.
@@ -38,7 +37,7 @@ public class SpringBootHealthCheckEnricher extends AbstractHealthCheckEnricher {
             "org.springframework.web.context.support.GenericWebApplicationContext"
     };
 
-    private static final int DEFAULT_MANAGEMENT_PORT = 8080;
+    private static final String DEFAULT_MANAGEMENT_PORT = "8080";
     private static final String SCHEME_HTTPS = "HTTPS";
     private static final String SCHEME_HTTP = "HTTP";
 
@@ -60,11 +59,14 @@ public class SpringBootHealthCheckEnricher extends AbstractHealthCheckEnricher {
         try {
             if (MavenUtil.hasAllClasses(this.getProject(), REQUIRED_CLASSES)) {
                 Properties properties = SpringBootUtil.getSpringBootApplicationProperties(this.getProject());
-                Integer port = PropertiesHelper.getInteger(properties, SpringBootProperties.MANAGEMENT_PORT,
-                                                           PropertiesHelper.getInteger(properties, SpringBootProperties.SERVER_PORT, DEFAULT_MANAGEMENT_PORT));
-                String scheme = Strings.isNotBlank(properties.getProperty(SpringBootProperties.SERVER_KEYSTORE)) ? SCHEME_HTTPS : SCHEME_HTTP;
+
+                String defaultPort =
+                    properties.getProperty(SpringBootProperties.SERVER_PORT, DEFAULT_MANAGEMENT_PORT);
+                Integer port = Integer.parseInt(
+                    properties.getProperty(SpringBootProperties.MANAGEMENT_PORT, defaultPort));
+                String scheme = StringUtils.isNotBlank(properties.getProperty(SpringBootProperties.SERVER_KEYSTORE)) ? SCHEME_HTTPS : SCHEME_HTTP;
                 String contextPath = properties.getProperty(SpringBootProperties.CONTEXT_PATH, "");
-                		
+
                 // lets default to adding a spring boot actuator health check
                 return new ProbeBuilder().
                         withNewHttpGet().withNewPort(port).withPath(contextPath + "/health").withScheme(scheme).endHttpGet().

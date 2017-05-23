@@ -15,11 +15,12 @@
  */
 package io.fabric8.maven.plugin.mojo.build;
 
+import io.fabric8.kubernetes.client.utils.IOHelpers;
+import io.fabric8.maven.core.util.FileUtil;
 import io.fabric8.maven.core.util.MavenUtil;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
-import io.fabric8.utils.Files;
-import io.fabric8.utils.IOHelpers;
-import io.fabric8.utils.Strings;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -71,7 +72,6 @@ public class DistroMojo extends AbstractFabric8Mojo {
     @Override
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
         File outDir = prepareOutputDir();
-        Files.recursiveDelete(outDir);
         Set<Artifact> artifacts = project.getArtifacts();
         for (Artifact artifact : artifacts) {
             String type = artifact.getType();
@@ -94,7 +94,7 @@ public class DistroMojo extends AbstractFabric8Mojo {
             if (idx > 0) {
                 name = name.substring(0, idx);
             }
-            name = Strings.stripSuffix(name, "-SNAPSHOT");
+            name = FileUtil.stripPostfix(name, "-SNAPSHOT");
 
             // lets remove the version
             idx = name.lastIndexOf('-');
@@ -118,7 +118,7 @@ public class DistroMojo extends AbstractFabric8Mojo {
                         try (InputStream is = jarFile.getInputStream(jarEntry)) {
                             File outFile = new File(outDir, type + "/" + getFolderName(jar) + "/" + name + ".yml");
                             outFile.getParentFile().mkdirs();
-                            IOHelpers.copy(is, new FileOutputStream(outFile));
+                            FileUtils.copyInputStreamToFile(is, outFile);
                         } catch (IOException e) {
                             throw new MojoExecutionException("Failed to process " + jar + ". " + e, e);
                         }
@@ -142,7 +142,7 @@ public class DistroMojo extends AbstractFabric8Mojo {
                 File packageFolder = artifactFolder.getParentFile();
                 if (packageFolder != null) {
                     String packageName = packageFolder.getName();
-                    if (Strings.isNotBlank(packageName)) {
+                    if (StringUtils.isNotBlank(packageName)) {
                         if (Objects.equals("packages", packageName)) {
                             return "main";
                         }
@@ -153,17 +153,22 @@ public class DistroMojo extends AbstractFabric8Mojo {
         return answer;
     }
 
-    private File prepareOutputDir() {
+    private File prepareOutputDir() throws MojoExecutionException {
         String dir = getProperty("fabric8.helm.outputDir");
         if (dir == null) {
             dir = project.getBuild().getDirectory() + "/fabric8/distro/";
         }
         File dirF = new File(dir);
-        if (Files.isDirectory(dirF)) {
-            Files.recursiveDelete(dirF);
+        try {
+            if (dirF.isDirectory()) {
+                FileUtils.deleteDirectory(dirF);
+            }
+            dirF.mkdir();
+            return dirF;
+        } catch (IOException e) {
+            throw new MojoExecutionException("Cannot delete directory " + dirF + ": " + e,e);
         }
-        dirF.mkdir();
-        return dirF;
+
     }
 
     protected URLClassLoader getCompileClassLoader() throws MojoExecutionException {

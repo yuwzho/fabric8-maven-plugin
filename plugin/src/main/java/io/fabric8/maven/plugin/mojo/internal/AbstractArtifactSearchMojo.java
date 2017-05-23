@@ -17,15 +17,16 @@ package io.fabric8.maven.plugin.mojo.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.fabric8.kubernetes.api.Annotations;
-import io.fabric8.kubernetes.api.KubernetesHelper;
+import com.google.common.base.Function;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
+import io.fabric8.kubernetes.api.model.KubernetesResource;
+import io.fabric8.maven.core.util.ResourceUtil;
+import io.fabric8.maven.core.util.ResourceFileType;
+import io.fabric8.maven.core.util.kubernetes.Fabric8Annotations;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
 import io.fabric8.openshift.api.model.Template;
-import io.fabric8.utils.Function;
-import io.fabric8.utils.IOHelpers;
-import io.fabric8.utils.URLUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.repository.MavenArtifactRepository;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
@@ -40,13 +41,14 @@ import org.eclipse.aether.resolution.ArtifactResult;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.fabric8.kubernetes.api.KubernetesHelper.getOrCreateAnnotations;
-import static io.fabric8.utils.Strings.isNotBlank;
+import static io.fabric8.maven.core.util.kubernetes.KubernetesHelper.getOrCreateAnnotations;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
  */
@@ -82,7 +84,7 @@ public abstract class AbstractArtifactSearchMojo extends AbstractFabric8Mojo {
     }
 
     protected static String findManifestIcon(Object manifest) {
-        return findManifestAnnotation(manifest, Annotations.Builds.ICON_URL);
+        return findManifestAnnotation(manifest, Fabric8Annotations.ICON_URL.value());
     }
 
     protected static <T> T findManifestValue(Object manifest, Function<HasMetadata, T> function) {
@@ -118,7 +120,7 @@ public abstract class AbstractArtifactSearchMojo extends AbstractFabric8Mojo {
     protected static String getHtmlFileContentOrDefault(File htmlFile, String defaultValue) throws MojoExecutionException {
         if (htmlFile != null && htmlFile.isFile()) {
             try {
-                return IOHelpers.readFully(htmlFile);
+                return FileUtils.readFileToString(htmlFile, Charset.defaultCharset());
             } catch (IOException e) {
                 throw new MojoExecutionException("Failed to load HTML: " + htmlFile + ". " + e, e);
             }
@@ -156,11 +158,11 @@ public abstract class AbstractArtifactSearchMojo extends AbstractFabric8Mojo {
             // lets switch icon host as SVG icons don't work there due to content type or something...
             String prefix = "https://raw.githubusercontent.com/";
             if (icon.startsWith(prefix)) {
-                return URLUtils.pathJoin("https://cdn.rawgit.com/", icon.substring(prefix.length()));
+                return String.format("https://cdn.rawgit.com/%s", icon.substring(prefix.length()));
             }
             if (icon.indexOf(':') < 0) {
                 // probably a relative icon
-                icon = URLUtils.pathJoin("https://cdn.rawgit.com/fabric8io/fabric8-console/master/", icon);
+                icon = String.format("https://cdn.rawgit.com/fabric8io/fabric8-console/master/%s", icon);
             }
         }
         return icon;
@@ -192,7 +194,7 @@ public abstract class AbstractArtifactSearchMojo extends AbstractFabric8Mojo {
     }
 
     protected File resolveArtifactFile(HelmIndexMojo.ArtifactDTO artifactDTO, String classifier, String extension) {
-        File file = null;
+        File file;
         try {
             ArtifactRequest artifactRequest = new ArtifactRequest();
             org.eclipse.aether.artifact.Artifact artifact = new DefaultArtifact(artifactDTO.getG(), artifactDTO.getA(), classifier, extension, artifactDTO.getV());
@@ -247,7 +249,7 @@ public abstract class AbstractArtifactSearchMojo extends AbstractFabric8Mojo {
             return null;
         }
         try {
-            return KubernetesHelper.loadYaml(file);
+            return ResourceUtil.load(file, KubernetesResource.class);
         } catch (IOException e) {
             getLog().warn("Failed to parse " + file + ". " + e, e);
             return null;

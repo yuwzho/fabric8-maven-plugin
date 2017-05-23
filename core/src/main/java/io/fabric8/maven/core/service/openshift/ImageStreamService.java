@@ -20,17 +20,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.maven.core.util.KubernetesResourceUtil;
-import io.fabric8.maven.core.util.ResourceFileType;
+import io.fabric8.maven.core.util.ResourceUtil;
+import io.fabric8.maven.core.util.kubernetes.KubernetesHelper;
+import io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil;
 import io.fabric8.maven.docker.util.ImageName;
 import io.fabric8.maven.docker.util.Logger;
 import io.fabric8.openshift.api.model.*;
 import io.fabric8.openshift.client.OpenShiftClient;
-import io.fabric8.utils.Strings;
-import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 
 /**
@@ -63,7 +62,7 @@ public class ImageStreamService {
      * @param target file to store the image stream
      */
     public void appendImageStreamResource(ImageName imageName, File target) throws MojoExecutionException {
-        String tag = Strings.isNullOrBlank(imageName.getTag()) ? "latest" : imageName.getTag();
+        String tag = StringUtils.isBlank(imageName.getTag()) ? "latest" : imageName.getTag();
         try {
             ImageStream is = new ImageStreamBuilder()
                     .withNewMetadata()
@@ -79,8 +78,8 @@ public class ImageStreamService {
 
                     .build();
             createOrUpdateImageStreamTag(client, imageName, is);
-            File fullTargetFile = appendImageStreamToFile(is, target);
-            log.info("ImageStream %s written to %s", imageName.getSimpleName(), fullTargetFile);
+            appendImageStreamToFile(is, target);
+            log.info("ImageStream %s written to %s", imageName.getSimpleName(), target);
         } catch (KubernetesClientException e) {
             KubernetesResourceUtil.handleKubernetesClientException(e, this.log);
         } catch (IOException e) {
@@ -89,31 +88,14 @@ public class ImageStreamService {
         }
     }
 
-    private File appendImageStreamToFile(ImageStream is, File target) throws MojoExecutionException, IOException {
+    private void appendImageStreamToFile(ImageStream is, File target) throws MojoExecutionException, IOException {
 
         Map<String, ImageStream> imageStreams = readAlreadyExtractedImageStreams(target);
         // Override with given image stream
         imageStreams.put(is.getMetadata().getName(),is);
-
         KubernetesList isList =
             new KubernetesListBuilder().withItems(new ArrayList<HasMetadata>(imageStreams.values())).build();
-        return writeImageStreams(target, isList);
-    }
-
-    private File writeImageStreams(File target, KubernetesList entity) throws MojoExecutionException, IOException {
-        final File targetWithoutExt;
-        final ResourceFileType type;
-        String ext = "";
-        try {
-            ext = FilenameUtils.getExtension(target.getPath());
-            type = ResourceFileType.fromExtension(ext);
-            String p = target.getAbsolutePath();
-            targetWithoutExt = new File(p.substring(0,p.length() - ext.length() - 1));
-        } catch (IllegalArgumentException exp) {
-            throw new MojoExecutionException(
-                String.format("Invalid extension '%s' for ImageStream target file '%s'. Allowed extensions: yml, json", ext, target.getPath()), exp);
-        }
-        return KubernetesResourceUtil.writeResource(entity, targetWithoutExt, type);
+        ResourceUtil.save(target, isList);
     }
 
     private Map<String, ImageStream> readAlreadyExtractedImageStreams(File target) throws IOException {
@@ -216,7 +198,7 @@ public class ImageStreamService {
                 // latest item is the first
                 for (TagEvent item : items) {
                     String image = item.getImage();
-                    if (Strings.isNotBlank(image)) {
+                    if (StringUtils.isNotBlank(image)) {
                         log.info("Found tag on ImageStream " + imageStreamName + " tag: " + image);
                         return image;
                     }

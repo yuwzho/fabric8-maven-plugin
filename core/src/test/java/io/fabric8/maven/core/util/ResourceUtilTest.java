@@ -25,14 +25,14 @@ import static org.junit.Assert.*;
  * @author roland
  * @since 07/02/17
  */
-public class JSONUtilTest {
+public class ResourceUtilTest {
 
     @Test
     public void simple() {
         JSONObject first = new JSONObject("{first: bla, second: blub}");
         JSONObject same = new JSONObject("{second: blub, first: bla   }");
         JSONObject different = new JSONObject("{second: blub, first: bla2   }");
-        assertTrue(JSONUtil.equals(first, same));
-        assertFalse(JSONUtil.equals(first, different));
+        assertTrue(ResourceUtil.jsonEquals(first, same));
+        assertFalse(ResourceUtil.jsonEquals(first, different));
     }
 }

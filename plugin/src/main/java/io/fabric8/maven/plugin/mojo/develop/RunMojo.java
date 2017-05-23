@@ -19,7 +19,6 @@ package io.fabric8.maven.plugin.mojo.develop;
 import java.util.Date;
 import java.util.Set;
 
-import io.fabric8.kubernetes.api.Controller;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -50,10 +49,10 @@ public class RunMojo extends AbstractTailLogMojo {
     private String onExitOperation;
 
     @Override
-    protected void applyEntities(Controller controller, final KubernetesClient kubernetes, final String namespace,
+    protected void applyEntities(final KubernetesClient kubernetes, final String namespace,
                                  String fileName, final Set<HasMetadata> entities) throws Exception {
         Date ignorePodsOlderThan = new Date();
-        super.applyEntities(controller, kubernetes, namespace, fileName, entities);
+        super.applyEntities(kubernetes, namespace, fileName, entities);
 
         getLogService().tailAppPodsLogs(kubernetes, namespace, entities, true, this.onExitOperation, true, ignorePodsOlderThan, true);
     }

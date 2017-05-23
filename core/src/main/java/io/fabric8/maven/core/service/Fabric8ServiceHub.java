@@ -18,7 +18,6 @@ package io.fabric8.maven.core.service;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import io.fabric8.kubernetes.api.Controller;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.maven.core.access.ClusterAccess;
 import io.fabric8.maven.core.config.PlatformMode;
@@ -56,10 +55,6 @@ public class Fabric8ServiceHub {
     private MavenProject mavenProject;
 
     /**
-     * Configurable with default
-     */
-    private Controller controller;
-
     /*
      * Computed resources
      */
@@ -83,27 +78,14 @@ public class Fabric8ServiceHub {
         }
         this.client = clusterAccess.createDefaultClient(log);
 
-        if (this.controller == null) {
-            this.controller = new Controller(this.client);
-            this.controller.setThrowExceptionOnError(true);
-        }
-
         // Lazily building services
 
-        this.services.putIfAbsent(ClientToolsService.class, new LazyBuilder<ClientToolsService>() {
+        this.services.putIfAbsent(ApplyService.class, new LazyBuilder<ApplyService>() {
             @Override
-            protected ClientToolsService build() {
-                return new ClientToolsService(controller, log);
+            protected ApplyService build() {
+                return new ApplyService(client, log);
             }
         });
-
-        this.services.putIfAbsent(PortForwardService.class, new LazyBuilder<PortForwardService>() {
-            @Override
-            protected PortForwardService build() {
-                return new PortForwardService(getClientToolsService(), log, client);
-            }
-        });
-
         this.services.putIfAbsent(BuildService.class, new LazyBuilder<BuildService>() {
             @Override
             protected BuildService build() {
@@ -126,14 +108,6 @@ public class Fabric8ServiceHub {
                 return new ArtifactResolverServiceMavenImpl(repositorySystem, mavenProject);
             }
         });
-    }
-
-    public ClientToolsService getClientToolsService() {
-        return (ClientToolsService) this.services.get(ClientToolsService.class).get();
-    }
-
-    public PortForwardService getPortForwardService() {
-        return (PortForwardService) this.services.get(PortForwardService.class).get();
     }
 
     public BuildService getBuildService() {
@@ -176,11 +150,6 @@ public class Fabric8ServiceHub {
 
         public Builder buildServiceConfig(BuildService.BuildServiceConfig buildServiceConfig) {
             hub.buildServiceConfig = buildServiceConfig;
-            return this;
-        }
-
-        public Builder controller(Controller controller) {
-            hub.controller = controller;
             return this;
         }
 

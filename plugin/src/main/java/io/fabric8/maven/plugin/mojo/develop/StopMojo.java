@@ -17,7 +17,6 @@ package io.fabric8.maven.plugin.mojo.develop;
 
 import java.util.Set;
 
-import io.fabric8.kubernetes.api.Controller;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.maven.plugin.mojo.build.ApplyMojo;
@@ -26,7 +25,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-import static io.fabric8.maven.core.util.KubernetesClientUtil.resizeApp;
+import static io.fabric8.maven.core.util.kubernetes.KubernetesClientUtil.resizeApp;
 
 /**
  * Stops the application that was previously created via <code>fabric8:deploy</code>
@@ -34,7 +33,7 @@ import static io.fabric8.maven.core.util.KubernetesClientUtil.resizeApp;
 @Mojo(name = "stop", requiresDependencyResolution = ResolutionScope.COMPILE, defaultPhase = LifecyclePhase.INSTALL)
 public class StopMojo extends ApplyMojo {
     @Override
-    protected void applyEntities(Controller controller, KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
+    protected void applyEntities(KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
         resizeApp(kubernetes, namespace, entities, 0, log);
     }
 }

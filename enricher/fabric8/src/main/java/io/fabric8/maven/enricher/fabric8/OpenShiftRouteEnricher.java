@@ -24,6 +24,7 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.ServiceSpec;
+import io.fabric8.maven.core.util.kubernetes.Fabric8Annotations;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.openshift.api.model.Route;
@@ -129,7 +130,7 @@ public class OpenShiftRouteEnricher extends BaseEnricher {
         if (metadata != null) {
             Map<String, String> labels = metadata.getLabels();
             if (labels != null) {
-                if ("true".equals(labels.get("expose")) || "true".equals(labels.get("fabric8.io/expose"))) {
+                if ("true".equals(labels.get("expose")) || "true".equals(labels.get(Fabric8Annotations.SERVICE_EXPOSE_URL.value()))) {
                     return true;
                 }
             }

@@ -91,7 +91,7 @@ public class PortForwardServiceTest {
 
 
         OpenShiftClient client = mockServer.createOpenShiftClient();
-        PortForwardService service = new PortForwardService(clientToolsService, logger, client) {
+        PortForwardService service = new PortForwardService(client, logger) {
             @Override
             public ProcessUtil.ProcessExecutionContext forwardPortAsync(Logger externalProcessLogger, String pod, int remotePort, int localPort) throws Fabric8ServiceException {
                 return new ProcessUtil.ProcessExecutionContext(process, Collections.<Thread>emptyList(), logger);

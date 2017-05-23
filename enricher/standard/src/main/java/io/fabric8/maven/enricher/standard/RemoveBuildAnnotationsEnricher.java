@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 
 import static io.fabric8.maven.core.util.Constants.RESOURCE_SOURCE_URL_ANNOTATION;
-import static io.fabric8.utils.Lists.notNullList;
 
 /**
  * Removes any build time annotations on resources
@@ -39,7 +38,7 @@ public class RemoveBuildAnnotationsEnricher extends BaseEnricher {
 
     @Override
     public void adapt(KubernetesListBuilder builder) {
-        List<HasMetadata> items = notNullList(builder.getItems());
+        List<HasMetadata> items = builder.buildItems();
 
         for (HasMetadata item : items) {
             removeBuildAnnotations(item);

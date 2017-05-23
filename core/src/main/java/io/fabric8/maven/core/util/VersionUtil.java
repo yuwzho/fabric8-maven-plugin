@@ -15,9 +15,9 @@
  */
 package io.fabric8.maven.core.util;
 
-import io.fabric8.utils.Objects;
-import io.fabric8.utils.Strings;
+import java.util.Objects;
 
+import org.apache.commons.lang3.StringUtils;
 
 /**
  */
@@ -47,7 +47,7 @@ public class VersionUtil {
         }
         diff = Integer.compare(components1.length, components2.length);
         if (diff == 0) {
-            diff = Objects.compare(v1, v2);
+            diff = v1 != null ? ( v2 != null ?  v1.compareTo(v2) : 1 ) : -1;
         }
         return diff;
     }
@@ -61,7 +61,7 @@ public class VersionUtil {
     }
 
     private static Integer tryParseInteger(String text) {
-        if (Strings.isNotBlank(text)) {
+        if (StringUtils.isNotBlank(text)) {
             try {
                 return Integer.parseInt(text);
             } catch (NumberFormatException e) {

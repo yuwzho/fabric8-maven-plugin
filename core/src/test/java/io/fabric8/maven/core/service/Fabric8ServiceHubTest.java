@@ -137,28 +137,6 @@ public class Fabric8ServiceHubTest {
     }
 
     @Test
-    public void testObtainClientToolsService() {
-        Fabric8ServiceHub hub = new Fabric8ServiceHub.Builder()
-                .clusterAccess(clusterAccess)
-                .log(logger)
-                .platformMode(PlatformMode.kubernetes)
-                .build();
-
-        assertNotNull(hub.getClientToolsService());
-    }
-
-    @Test
-    public void testObtainPortForwardService() {
-        Fabric8ServiceHub hub = new Fabric8ServiceHub.Builder()
-                .clusterAccess(clusterAccess)
-                .log(logger)
-                .platformMode(PlatformMode.kubernetes)
-                .build();
-
-        assertNotNull(hub.getPortForwardService());
-    }
-
-    @Test
     public void testObtainArtifactResolverService() {
         Fabric8ServiceHub hub = new Fabric8ServiceHub.Builder()
                 .clusterAccess(clusterAccess)

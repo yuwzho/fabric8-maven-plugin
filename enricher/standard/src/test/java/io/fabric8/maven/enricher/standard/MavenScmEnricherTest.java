@@ -16,6 +16,7 @@
 
 package io.fabric8.maven.enricher.standard;
 
+import io.fabric8.maven.core.util.kubernetes.Fabric8Annotations;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.maven.enricher.api.Kind;
 import mockit.Expectations;
@@ -67,13 +68,13 @@ public class MavenScmEnricherTest {
 
         Assert.assertEquals(4, scmAnnotations.size());
         assertEquals("scm:git:git://github.com/fabric8io/fabric8-maven-plugin.git",
-                scmAnnotations.get(MavenScmEnricher.SCM_CONNECTION));
+                scmAnnotations.get(Fabric8Annotations.SCM_CONNECTION.value()));
         assertEquals("scm:git:git://github.com/fabric8io/fabric8-maven-plugin.git",
-                scmAnnotations.get(MavenScmEnricher.SCM_DEVELOPER_CONNECTION));
+                scmAnnotations.get(Fabric8Annotations.SCM_DEVELOPER_CONNECTION.value()));
         assertEquals("HEAD",
-                scmAnnotations.get(MavenScmEnricher.SCM_TAG));
+                scmAnnotations.get(Fabric8Annotations.SCM_TAG.value()));
         assertEquals("git://github.com/fabric8io/fabric8-maven-plugin.git",
-                scmAnnotations.get(MavenScmEnricher.SCM_URL));
+                scmAnnotations.get(Fabric8Annotations.SCM_URL.value()));
 
     }
 
@@ -101,9 +102,9 @@ public class MavenScmEnricherTest {
 
         Assert.assertEquals(2, scmAnnotations.size());
         assertEquals("scm:git:git://github.com/fabric8io/fabric8-maven-plugin.git",
-                scmAnnotations.get(MavenScmEnricher.SCM_CONNECTION));
+                scmAnnotations.get(Fabric8Annotations.SCM_CONNECTION.value()));
         assertEquals("HEAD",
-                scmAnnotations.get(MavenScmEnricher.SCM_TAG));
+                scmAnnotations.get(Fabric8Annotations.SCM_TAG.value()));
 
     }
 
@@ -131,9 +132,9 @@ public class MavenScmEnricherTest {
 
         Assert.assertEquals(2, scmAnnotations.size());
         assertEquals("git://github.com/fabric8io/fabric8-maven-plugin.git",
-                scmAnnotations.get(MavenScmEnricher.SCM_URL));
+                scmAnnotations.get(Fabric8Annotations.SCM_URL.value()));
         assertEquals("HEAD",
-                scmAnnotations.get(MavenScmEnricher.SCM_TAG));
+                scmAnnotations.get(Fabric8Annotations.SCM_TAG.value()));
 
     }
 
@@ -161,9 +162,9 @@ public class MavenScmEnricherTest {
 
         Assert.assertEquals(2, scmAnnotations.size());
         assertEquals("scm:git:git://github.com/fabric8io/fabric8-maven-plugin.git",
-                scmAnnotations.get(MavenScmEnricher.SCM_DEVELOPER_CONNECTION));
+                scmAnnotations.get(Fabric8Annotations.SCM_DEVELOPER_CONNECTION.value()));
         assertEquals("HEAD",
-                scmAnnotations.get(MavenScmEnricher.SCM_TAG));
+                scmAnnotations.get(Fabric8Annotations.SCM_TAG.value()));
 
     }
 

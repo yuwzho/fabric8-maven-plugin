@@ -21,10 +21,9 @@ import java.io.IOException;
 import java.util.*;
 
 import javax.validation.ConstraintViolationException;
+import javax.xml.transform.Templates;
 
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
-import io.fabric8.kubernetes.api.extensions.Templates;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.maven.core.access.ClusterAccess;
@@ -33,6 +32,7 @@ import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.handler.ReplicationControllerHandler;
 import io.fabric8.maven.core.handler.ServiceHandler;
 import io.fabric8.maven.core.util.*;
+import io.fabric8.maven.core.util.kubernetes.*;
 import io.fabric8.maven.docker.AbstractDockerMojo;
 import io.fabric8.maven.docker.config.ConfigHelper;
 import io.fabric8.maven.docker.config.ImageConfiguration;
@@ -68,7 +68,6 @@ public class ResourceMojo extends AbstractResourceMojo {
     /**
      * Used to annotate a resource as being for a specific platform only such as "kubernetes" or "openshift"
      */
-    public static final String TARGET_PLATFORM_ANNOTATION = "fabric8.io/target-platform";
 
     // THe key how we got the the docker maven plugin
     private static final String DOCKER_MAVEN_PLUGIN_KEY = "io.fabric8:docker-maven-plugin";
@@ -284,7 +283,7 @@ public class ResourceMojo extends AbstractResourceMojo {
         Template customTemplate = createTemplateWithObjects(kubernetesResources, template);
         if (customTemplate != null) {
             try {
-                return Templates.processTemplatesLocally(customTemplate, false);
+                return OpenshiftHelper.processTemplatesLocally(customTemplate, false);
             } catch (IOException e) {
                 throw new MojoExecutionException("Failed to replace template expressions in kubernetes manifest: " + e, e);
             }
@@ -335,12 +334,12 @@ public class ResourceMojo extends AbstractResourceMojo {
     }
 
     private boolean isTargetPlatformOpenShift(HasMetadata item) {
-        String targetPlatform = KubernetesHelper.getOrCreateAnnotations(item).get(TARGET_PLATFORM_ANNOTATION);
+        String targetPlatform = KubernetesHelper.getOrCreateAnnotations(item).get(Fabric8Annotations.TARGET_PLATFORM.value());
         return targetPlatform != null && "openshift".equalsIgnoreCase(targetPlatform);
     }
 
     private boolean isTargetPlatformKubernetes(HasMetadata item) {
-        String targetPlatform = KubernetesHelper.getOrCreateAnnotations(item).get(TARGET_PLATFORM_ANNOTATION);
+        String targetPlatform = KubernetesHelper.getOrCreateAnnotations(item).get(Fabric8Annotations.TARGET_PLATFORM.value());
         return targetPlatform != null && "kubernetes".equalsIgnoreCase(targetPlatform);
     }
 
@@ -522,7 +521,7 @@ public class ResourceMojo extends AbstractResourceMojo {
                 if (extractedTemplate == null) {
                     extractedTemplate = template;
                 } else {
-                    extractedTemplate = Templates.combineTemplates(extractedTemplate, template);
+                    extractedTemplate = OpenshiftHelper.combineTemplates(extractedTemplate, template);
                 }
                 items.remove(item);
             }

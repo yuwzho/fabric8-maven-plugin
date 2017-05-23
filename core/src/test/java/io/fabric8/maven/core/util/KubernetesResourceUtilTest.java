@@ -25,13 +25,13 @@ import java.net.URLDecoder;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
-
+import io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static io.fabric8.maven.core.util.KubernetesResourceUtil.API_VERSION;
-import static io.fabric8.maven.core.util.KubernetesResourceUtil.DEFAULT_RESOURCE_VERSIONING;
-import static io.fabric8.maven.core.util.KubernetesResourceUtil.getResource;
+import static io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil.API_VERSION;
+import static io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil.DEFAULT_RESOURCE_VERSIONING;
+import static io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil.getResource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;

@@ -24,13 +24,12 @@ import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.generator.api.FromSelector;
 import io.fabric8.maven.generator.api.GeneratorContext;
 import io.fabric8.maven.generator.api.support.BaseGenerator;
-import io.fabric8.utils.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.assembly.model.Assembly;
 import org.apache.maven.plugin.assembly.model.DependencySet;
 import org.apache.maven.plugin.assembly.model.FileSet;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.util.StringUtils;
 
 import java.io.File;
 import java.util.*;
@@ -156,7 +155,7 @@ public class JavaExecGenerator extends BaseGenerator {
         }
         List<String> javaOptions = getExtraJavaOptions();
         if (javaOptions.size() > 0) {
-            ret.put(JAVA_OPTIONS, StringUtils.join(javaOptions.iterator()," "));
+            ret.put(JAVA_OPTIONS, StringUtils.join(javaOptions.iterator(), " "));
         }
         return ret;
     }
@@ -241,7 +240,7 @@ public class JavaExecGenerator extends BaseGenerator {
     }
 
     protected void addPortIfValid(List<String> list, String port) {
-        if (Strings.isNotBlank(port) && Integer.parseInt(port) > 0) {
+        if (StringUtils.isNotBlank(port) && Integer.parseInt(port) > 0) {
             list.add(port);
         }
     }

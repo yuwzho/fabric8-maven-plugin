@@ -15,41 +15,33 @@
  */
 package io.fabric8.maven.plugin.mojo.internal;
 
-import io.fabric8.kubernetes.api.Annotations;
-import io.fabric8.kubernetes.api.KubernetesHelper;
-import io.fabric8.kubernetes.api.ServiceNames;
-import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
-import io.fabric8.kubernetes.api.model.EndpointAddress;
-import io.fabric8.kubernetes.api.model.EndpointSubset;
-import io.fabric8.kubernetes.api.model.Endpoints;
-import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.api.model.Namespace;
-import io.fabric8.kubernetes.api.model.NamespaceBuilder;
-import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.SecretBuilder;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.util.*;
+
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+
+import com.google.common.base.Objects;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.utils.IOHelpers;
 import io.fabric8.maven.core.access.ClusterAccess;
-import io.fabric8.maven.core.util.KubernetesResourceUtil;
+import io.fabric8.maven.core.service.openshift.JenkinShiftClient;
+import io.fabric8.maven.core.util.FileUtil;
+import io.fabric8.maven.core.util.kubernetes.*;
 import io.fabric8.maven.docker.util.Logger;
+import io.fabric8.maven.fabric8.project.BuildConfigHelper;
+import io.fabric8.maven.fabric8.project.GitUtils;
+import io.fabric8.maven.fabric8.project.UserDetails;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
-import io.fabric8.openshift.api.model.BuildConfig;
-import io.fabric8.openshift.api.model.BuildConfigList;
-import io.fabric8.openshift.api.model.BuildConfigSpec;
-import io.fabric8.openshift.api.model.BuildSource;
-import io.fabric8.openshift.api.model.GitBuildSource;
-import io.fabric8.openshift.api.model.ProjectRequest;
-import io.fabric8.openshift.api.model.ProjectRequestBuilder;
+import io.fabric8.openshift.api.model.*;
 import io.fabric8.openshift.client.OpenShiftClient;
-import io.fabric8.project.support.BuildConfigHelper;
-import io.fabric8.project.support.GitUtils;
-import io.fabric8.project.support.UserDetails;
-import io.fabric8.utils.Base64Encoder;
-import io.fabric8.utils.IOHelpers;
-import io.fabric8.utils.Objects;
-import io.fabric8.utils.Strings;
-import io.fabric8.utils.URLUtils;
+import io.fabric8.openshift.client.OpenShiftNotAvailableException;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -59,24 +51,7 @@ import org.codehaus.plexus.components.interactivity.Prompter;
 import org.codehaus.plexus.components.interactivity.PrompterException;
 import org.eclipse.jgit.lib.Repository;
 
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
-import static io.fabric8.kubernetes.api.KubernetesHelper.getName;
-import static io.fabric8.kubernetes.api.KubernetesHelper.getNamespace;
-import static io.fabric8.kubernetes.api.extensions.Configs.currentUserName;
-import static io.fabric8.project.support.BuildConfigHelper.createBuildConfig;
+import static io.fabric8.maven.core.util.kubernetes.KubernetesHelper.*;
 
 /**
  * Imports the current project into fabric8 so that it can be automatically built via Jenkins and appears in the
@@ -123,8 +98,11 @@ public class ImportMojo extends AbstractFabric8Mojo {
     private String gitEmail;
     private boolean gitSecretUpdated;
 
+    private BuildConfigHelper buildConfigHelper;
+
     private static String getQualifiedName(HasMetadata hasMetadata, String defaultNamespace) {
-        return Strings.defaultIfEmpty(getNamespace(hasMetadata), defaultNamespace) + "/" + getName(hasMetadata);
+        return StringUtils.defaultIfEmpty(getNamespace(hasMetadata), defaultNamespace) +
+               "/" + getName(hasMetadata);
     }
 
     @Override
@@ -133,9 +111,11 @@ public class ImportMojo extends AbstractFabric8Mojo {
             throw new MojoExecutionException("No directory for base directory: " + basedir);
         }
 
+        buildConfigHelper = new BuildConfigHelper(log);
+
         // lets check for a git repo
-        String gitRemoteURL = null;
-        Repository repository = null;
+        String gitRemoteURL;
+        Repository repository;
         try {
             repository = GitUtils.findRepository(basedir);
         } catch (IOException e) {
@@ -149,7 +129,7 @@ public class ImportMojo extends AbstractFabric8Mojo {
 
         try {
             clusterAccess = new ClusterAccess(this.namespace);
-            if (Strings.isNullOrBlank(projectName)) {
+            if (StringUtils.isBlank(projectName)) {
                 projectName = basedir.getName();
             }
 
@@ -169,8 +149,8 @@ public class ImportMojo extends AbstractFabric8Mojo {
                             getName(buildConfig) + " for URI: " + gitRemoteURL + " and branch: " + branch);
                 } else {
                     Map<String, String> annotations = new HashMap<>();
-                    annotations.put(Annotations.Builds.GIT_CLONE_URL, gitRemoteURL);
-                    buildConfig = createBuildConfig(kubernetes, namespace, projectName, gitRemoteURL, annotations);
+                    annotations.put(Fabric8Annotations.GIT_CLONE_URL.value(), gitRemoteURL);
+                    buildConfig = buildConfigHelper.createBuildConfig(kubernetes, namespace, projectName, gitRemoteURL, annotations);
 
                     openShiftClient.buildConfigs().inNamespace(namespace).create(buildConfig);
 
@@ -183,8 +163,8 @@ public class ImportMojo extends AbstractFabric8Mojo {
                 UserDetails userDetails = createGogsUserDetails(kubernetes, namespace);
                 BuildConfigHelper.CreateGitProjectResults createGitProjectResults;
                 try {
-                    createGitProjectResults = BuildConfigHelper.importNewGitProject(kubernetes, userDetails, basedir,
-                            namespace, projectName, originBranchName, "Importing project from mvn fabric8:import", false);
+                    createGitProjectResults = buildConfigHelper.importNewGitProject(kubernetes, userDetails, basedir,
+                                                                                    namespace, projectName, originBranchName, "Importing project from mvn fabric8:import", false);
                 } catch (WebApplicationException e) {
                     Response response = e.getResponse();
                     if (response.getStatus() > 400) {
@@ -299,7 +279,7 @@ public class ImportMojo extends AbstractFabric8Mojo {
                 for (File file : files) {
                     String publicName = file.getName();
                     if (file.isFile() && publicName.endsWith(".pub")) {
-                        String privateName = Strings.stripSuffix(publicName, ".pub");
+                        String privateName = FileUtil.stripPostfix(publicName, ".pub");
                         if (new File(sshDir, privateName).isFile()) {
                             keyPairs.put(privateName, publicName);
                         }
@@ -323,9 +303,9 @@ public class ImportMojo extends AbstractFabric8Mojo {
                 } catch (PrompterException e) {
                     log.warn("Failed to get user input: %s", e);
                 }
-                if (Strings.isNotBlank(privateKey)) {
+                if (StringUtils.isNotBlank(privateKey)) {
                     String publicKey = keyPairs.get(privateKey);
-                    if (Strings.isNullOrBlank(publicKey)) {
+                    if (StringUtils.isBlank(publicKey)) {
                         log.warn("Invalid answer: %s when available values are: %s", privateKey, privateKeys);
                     } else {
                         importSshKeys(secretData, sshDir, privateKey, publicKey);
@@ -350,35 +330,34 @@ public class ImportMojo extends AbstractFabric8Mojo {
         }
         String key = null;
         try {
-            key = IOHelpers.readFully(file);
+            key = FileUtils.readFileToString(file, Charset.defaultCharset());
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to load SSH key file " + file + ": " + e, e);
         }
-        if (Strings.isNullOrBlank(key)) {
+        if (StringUtils.isBlank(key)) {
             throw new MojoExecutionException("Empty SSH key file " + file);
         }
-        return Base64Encoder.encode(key);
+        return Base64.encodeBase64String(key.getBytes());
     }
 
     protected UserDetails createGogsUserDetails(KubernetesClient kubernetes, String namespace) throws MojoExecutionException {
         String gogsURL = getGogsURL(kubernetes, namespace);
         log.debug("Got gogs URL: " + gogsURL);
-        if (Strings.isNullOrBlank(gogsURL)) {
-            throw new MojoExecutionException("Could not find the external URL to service " + ServiceNames.GOGS
-                    + " in namespace " + namespace + ". Are you sure you are running gogs in this kubernetes namespace?");
+        if (StringUtils.isBlank(gogsURL)) {
+            throw new MojoExecutionException("Could not find the external URL to service 'gogs' in namespace " + namespace + ". Are you sure you are running gogs in this kubernetes namespace?");
         }
         String gogsSecretName = getGogsSecretName(namespace);
         Secret gogsSecret = null;
-        if (Strings.isNullOrBlank(gitUserName) || Strings.isNullOrBlank(gitPassword)) {
+        if (StringUtils.isBlank(gitUserName) || StringUtils.isBlank(gitPassword)) {
             gogsSecret = findOrCreateGitSecret(kubernetes, gogsSecretName, GOGS_REPO_HOST);
         }
-        if (Strings.isNullOrBlank(gitUserName)) {
+        if (StringUtils.isBlank(gitUserName)) {
             gitUserName = getGogsSecretField(kubernetes, gogsSecret, GOGS_REPO_HOST, "username");
         }
-        if (Strings.isNullOrBlank(gitPassword)) {
+        if (StringUtils.isBlank(gitPassword)) {
             gitPassword = getGogsSecretField(kubernetes, gogsSecret, GOGS_REPO_HOST, "password");
         }
-        if (Strings.isNullOrBlank(gitEmail)) {
+        if (StringUtils.isBlank(gitEmail)) {
             gitEmail = findEmailFromDotGitConfig();
         }
         createOrUpdateSecret(kubernetes, gogsSecret);
@@ -393,7 +372,7 @@ public class ImportMojo extends AbstractFabric8Mojo {
     private void createOrUpdateSecret(KubernetesClient kubernetes, Secret secret) {
         if (gitSecretUpdated) {
             String name = getName(secret);
-            if (Strings.isNotBlank(secret.getMetadata().getResourceVersion())) {
+            if (StringUtils.isNotBlank(secret.getMetadata().getResourceVersion())) {
                 log.info("Updating Secret " + getQualifiedName(secret, secretNamespace));
                 kubernetes.secrets().inNamespace(secretNamespace).withName(name).replace(secret);
             } else {
@@ -410,7 +389,7 @@ public class ImportMojo extends AbstractFabric8Mojo {
             gogsSecret.setData(data);
         }
         String value = data.get(propertyName);
-        if (Strings.isNullOrBlank(value) || retryPassword) {
+        if (StringUtils.isBlank(value) || retryPassword) {
             try {
                 if (propertyName.equals("password")) {
                     value = prompter.promptForPassword("Please enter your password/access token for git repo " + gitRepoHost);
@@ -420,15 +399,15 @@ public class ImportMojo extends AbstractFabric8Mojo {
             } catch (PrompterException e) {
                 throw new MojoExecutionException("Failed to input required data: " + e, e);
             }
-            data.put(propertyName, Base64Encoder.encode(value));
+            data.put(propertyName, Base64.encodeBase64String(value.getBytes()));
             gitSecretUpdated = true;
             return value;
         }
-        return Base64Encoder.decode(value);
+        return new String(org.apache.commons.codec.binary.Base64.decodeBase64(value));
     }
 
     private String hidePassword(String password) {
-        if (Strings.isNullOrBlank(password)) {
+        if (StringUtils.isBlank(password)) {
             return "";
         }
         StringBuilder buffer = new StringBuilder();
@@ -479,7 +458,7 @@ public class ImportMojo extends AbstractFabric8Mojo {
             labels.put("provider", "fabric8");
             labels.put("kind", "secrets");
             namespace = new NamespaceBuilder().withNewMetadata().withName(name).withLabels(labels).endMetadata().build();
-            if (KubernetesHelper.isOpenShift(kubernetes)) {
+            if (OpenshiftHelper.isOpenShift(kubernetes)) {
                 ProjectRequest projectRequest = new ProjectRequestBuilder().withMetadata(namespace.getMetadata()).build();
                 OpenShiftClient openShiftClient = asOpenShiftClient(kubernetes);
                 log.info("Creating ProjectRequest " + name + " with labels: " + labels);
@@ -510,7 +489,7 @@ public class ImportMojo extends AbstractFabric8Mojo {
                                 String uri = git.getUri();
                                 String ref = git.getRef();
                                 if (Objects.equal(gitRepoUrl, uri)) {
-                                    if (Strings.isNullOrBlank(gitRef) && Strings.isNullOrBlank(ref)) {
+                                    if (StringUtils.isBlank(gitRef) && StringUtils.isBlank(ref)) {
                                         return item;
                                     }
                                     if (Objects.equal(gitRef, ref)) {
@@ -528,14 +507,14 @@ public class ImportMojo extends AbstractFabric8Mojo {
     }
 
     public String getSecretNamespace() {
-        if (Strings.isNullOrBlank(secretNamespace)) {
-            secretNamespace = "user-secrets-source-" + currentUserName();
+        if (StringUtils.isBlank(secretNamespace)) {
+            secretNamespace = "user-secrets-source-" + KubernetesHelper.currentUserName();
         }
         return secretNamespace;
     }
 
     public String getGogsSecretName(String currentNamespace) {
-        if (Strings.isNullOrBlank(gogsSecretName)) {
+        if (StringUtils.isBlank(gogsSecretName)) {
             gogsSecretName = createGitSecretName(currentNamespace, GOGS_REPO_HOST);
         }
         return gogsSecretName;
@@ -546,18 +525,18 @@ public class ImportMojo extends AbstractFabric8Mojo {
     }
 
     protected void logBuildConfigLink(KubernetesClient kubernetes, String namespace, BuildConfig buildConfig, Logger log) {
-        String url = BuildConfigHelper.getBuildConfigConsoleURL(kubernetes, namespace, buildConfig);
+        String url = buildConfigHelper.getBuildConfigConsoleURL(kubernetes, namespace, buildConfig);
         if (url != null) {
             log.info("You can view the project dashboard at: " + url);
             File jenkinsfile = new File(basedir, "Jenkinsfile");
             if (!jenkinsfile.exists() || !jenkinsfile.isFile()) {
-                log.info("To configure a CD Pipeline go to: " + URLUtils.pathJoin(url, "/forge/command/devops-edit"));
+                log.info("To configure a CD Pipeline go to: " + String.format("%s/forge/command/devops-edit", url));
             }
         }
     }
 
     private String getGogsURL(KubernetesClient kubernetes, String namespace) throws MojoExecutionException {
-        Endpoints endpoints = kubernetes.endpoints().inNamespace(namespace).withName(ServiceNames.GOGS).get();
+        Endpoints endpoints = kubernetes.endpoints().inNamespace(namespace).withName("gogs").get();
         int runningEndpoints = 0;
         if (endpoints != null) {
             List<EndpointSubset> subsets = endpoints.getSubsets();
@@ -571,11 +550,11 @@ public class ImportMojo extends AbstractFabric8Mojo {
         if (runningEndpoints == 0) {
             log.warn("No running endpoints for service %s in namespace %s. " +
                      "Please run the `gogs` or the `cd-pipeline` application in the fabric8 console.",
-                    ServiceNames.GOGS, namespace);
-            throw new MojoExecutionException("No service " + ServiceNames.GOGS + " running in namespace " + namespace);
+                    "gogs", namespace);
+            throw new MojoExecutionException("No service " + "gogs" + " running in namespace " + namespace);
         }
-        log.info("Running %s endpoints of %s in namespace %s", runningEndpoints, ServiceNames.GOGS, namespace);
-        return KubernetesHelper.getServiceURL(kubernetes, ServiceNames.GOGS, namespace, "http", true);
+        log.info("Running %s endpoints of %s in namespace %s", runningEndpoints, "gogs", namespace);
+        return ServiceUrlUtil.getServiceURL(kubernetes, "gogs", namespace, "http", true);
     }
 
     protected String getEntityMessage(Response response) throws IOException {
@@ -594,4 +573,41 @@ public class ImportMojo extends AbstractFabric8Mojo {
         return message;
     }
 
+    private OpenShiftClient getOpenShiftClientOrJenkinsShift(KubernetesClient kubernetes, String namespace) throws MojoExecutionException {
+        OpenShiftClient openShiftClient = getOpenShiftClientOrNull(kubernetes);
+        if (openShiftClient == null) {
+            String jenkinshiftUrl = getJenkinShiftUrl(kubernetes, namespace);
+            log.debug("Using jenkinshift URL: " + jenkinshiftUrl);
+            if (jenkinshiftUrl == null) {
+                throw new MojoExecutionException("Could not find the service `jenkinshift` in namespace `" + namespace + "` on this kubernetes cluster " + kubernetes.getMasterUrl());
+            }
+            return new JenkinShiftClient(jenkinshiftUrl);
+        }
+        return openShiftClient;
+    }
+
+    private String getJenkinShiftUrl(KubernetesClient kubernetes, String namespace) {
+        String jenkinshiftUrl = ServiceUrlUtil.getServiceURL(kubernetes, "jenkinshift", namespace, "http", true);
+        if (jenkinshiftUrl == null) {
+            // the jenkinsshift URL is not external so lets use the fabric8 console
+            String fabric8ConsoleURL = getFabric8ConsoleServiceUrl(kubernetes, namespace);
+            if (StringUtils.isNotBlank(fabric8ConsoleURL)) {
+                jenkinshiftUrl = String.format("%s/k8s",fabric8ConsoleURL);
+            }
+        }
+        return jenkinshiftUrl;
+    }
+
+    private static String getFabric8ConsoleServiceUrl(KubernetesClient kubernetes, String namespace) {
+        return ServiceUrlUtil.getServiceURL(kubernetes, "fabric8", namespace, "http", true);
+    }
+
+    private OpenShiftClient getOpenShiftClientOrNull(KubernetesClient kubernetesClient) {
+        try {
+            return kubernetesClient.adapt(OpenShiftClient.class);
+        } catch (OpenShiftNotAvailableException e) {
+            // ignore
+        }
+        return null;
+    }
 }

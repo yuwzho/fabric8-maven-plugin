@@ -18,15 +18,14 @@ package io.fabric8.maven.core.access;
 
 import java.net.UnknownHostException;
 
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.client.*;
 import io.fabric8.maven.core.config.PlatformMode;
+import io.fabric8.maven.core.util.kubernetes.KubernetesHelper;
+import io.fabric8.maven.core.util.kubernetes.OpenshiftHelper;
 import io.fabric8.maven.docker.util.Logger;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
-import io.fabric8.utils.Strings;
-
-import static io.fabric8.kubernetes.api.KubernetesHelper.DEFAULT_NAMESPACE;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * @author roland
@@ -39,11 +38,8 @@ public class ClusterAccess {
     public ClusterAccess(String namespace) {
         this.namespace = namespace;
 
-        if (Strings.isNullOrBlank(this.namespace)) {
-            this.namespace = KubernetesHelper.defaultNamespace();
-        }
-        if (Strings.isNullOrBlank(this.namespace)) {
-            this.namespace = DEFAULT_NAMESPACE;
+        if (StringUtils.isBlank(this.namespace)) {
+            this.namespace = KubernetesHelper.getDefaultNamespace();
         }
     }
 
@@ -74,7 +70,7 @@ public class ClusterAccess {
 
     public boolean isOpenShift(Logger log) {
         try {
-            return KubernetesHelper.isOpenShift(createKubernetesClient());
+            return OpenshiftHelper.isOpenShift(createKubernetesClient());
         } catch (KubernetesClientException exp) {
             Throwable cause = exp.getCause();
             String prefix = cause instanceof UnknownHostException ? "Unknown host " : "";

@@ -17,11 +17,11 @@ package io.fabric8.maven.plugin.mojo.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.fabric8.kubernetes.api.KubernetesHelper;
+import io.fabric8.maven.core.util.ResourceUtil;
+import io.fabric8.maven.core.util.ResourceFileType;
 import io.fabric8.maven.core.util.VersionUtil;
 import io.fabric8.maven.plugin.mojo.build.HelmMojo;
-import io.fabric8.utils.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -114,8 +114,7 @@ public class HelmIndexMojo extends AbstractArtifactSearchMojo {
             getLog().debug("" + entry.getKey() + " = " + entry.getValue());
         }
         try {
-            ObjectMapper mapper = KubernetesHelper.createYamlObjectMapper();
-            mapper.writeValue(outputFile, repository);
+            ResourceUtil.save(outputFile, repository, ResourceFileType.yaml);
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to write results as YAML to: " + outputFile + ". " + e, e);
         }
@@ -169,7 +168,7 @@ public class HelmIndexMojo extends AbstractArtifactSearchMojo {
                     writer.println("      <td title='" + chartDescription + "'>");
                     String iconHtml = "";
                     String iconUrl = findIconURL(first, set);
-                    if (Strings.isNotBlank(iconUrl)) {
+                    if (StringUtils.isNotBlank(iconUrl)) {
                         iconHtml = "<img class='logo' src='" + iconUrl + "'>";
                     }
                     writer.println("        " + iconHtml + "<span class='chart-name'>" + key + "</span>");
@@ -203,7 +202,7 @@ public class HelmIndexMojo extends AbstractArtifactSearchMojo {
             HelmMojo.Chart chartfile = chartInfo.getChartfile();
             if (chartfile != null) {
                 String icon = chartfile.getIcon();
-                if (Strings.isNotBlank(icon)) {
+                if (StringUtils.isNotBlank(icon)) {
                     return convertRelativeIcon(icon);
                 }
             }
@@ -211,7 +210,7 @@ public class HelmIndexMojo extends AbstractArtifactSearchMojo {
 
         // lets try find the icon from the kubernetes manifest
         String answer = convertRelativeIcon(findManifestIcon(first.getKubernetesManifest()));
-        if (Strings.isNullOrBlank(answer)) {
+        if (StringUtils.isBlank(answer)) {
             answer = "https://fabric8.io/images/logos/kubernetes.png";
         }
         return answer;
@@ -282,7 +281,7 @@ public class HelmIndexMojo extends AbstractArtifactSearchMojo {
             return null;
         }
         try {
-            return KubernetesHelper.loadYaml(tempChartFile, HelmMojo.Chart.class);
+            return ResourceUtil.load(tempChartFile, HelmMojo.Chart.class);
         } catch (IOException e) {
             getLog().warn("Failed to parse " + tempChartFile + ". " + e, e);
             return null;

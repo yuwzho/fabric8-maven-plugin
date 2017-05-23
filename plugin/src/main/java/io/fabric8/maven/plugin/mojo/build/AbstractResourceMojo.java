@@ -15,16 +15,17 @@
  */
 package io.fabric8.maven.plugin.mojo.build;
 
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
-import io.fabric8.maven.core.util.KubernetesResourceUtil;
+import io.fabric8.maven.core.util.ResourceUtil;
+import io.fabric8.maven.core.util.kubernetes.KubernetesHelper;
+import io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil;
 import io.fabric8.maven.core.util.ResourceClassifier;
 import io.fabric8.maven.core.util.ResourceFileType;
 import io.fabric8.maven.docker.util.Logger;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
 import io.fabric8.openshift.api.model.Template;
-import io.fabric8.utils.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -34,7 +35,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static io.fabric8.maven.core.util.ResourceFileType.json;
 import static io.fabric8.maven.core.util.ResourceFileType.yaml;
 
 /**
@@ -75,54 +75,47 @@ public abstract class AbstractResourceMojo extends AbstractFabric8Mojo {
         // write kubernetes.yml / openshift.yml
         File resourceFileBase = new File(this.targetDir, classifier.getValue());
 
-        File file = writeResourcesIndividualAndComposite(resources, resourceFileBase, this.resourceFileType, log);
+        writeResourcesIndividualAndComposite(resources, resourceFileBase, this.resourceFileType, log);
 
         // Attach it to the Maven reactor so that it will also get deployed
-        projectHelper.attachArtifact(project, this.resourceFileType.getArtifactType(), classifier.getValue(), file);
-
-        // TODO: Remove the following block when devops and other apps used by gofabric8 are migrated
-        // to fmp-v3. See also https://github.com/fabric8io/fabric8-maven-plugin/issues/167
-        if (this.resourceFileType.equals(yaml)) {
-            // lets generate JSON too to aid migration from version 2.x to 3.x for packaging templates
-            file = writeResource(resourceFileBase, resources, json);
-
-            // Attach it to the Maven reactor so that it will also get deployed
-            projectHelper.attachArtifact(project, json.getArtifactType(), classifier.getValue(), file);
-        }
+        projectHelper.attachArtifact(project, this.resourceFileType.getArtifactType(), classifier.getValue(), resourceFileType.addExtensionIfMissing(resourceFileBase));
     }
 
-    public static File writeResourcesIndividualAndComposite(KubernetesList resources, File resourceFileBase, ResourceFileType resourceFileType, Logger log) throws MojoExecutionException {
+    private static void writeResourcesIndividualAndComposite(KubernetesList resources, File resourceFileBase, ResourceFileType resourceFileType, Logger log) throws MojoExecutionException {
         Object entity = resources;
         // if the list contains a single Template lets unwrap it
+        // TODO: Check this, actually this kind of 'unwrapping' should happend somewhere else where the resources are created.
         Template template = getSingletonTemplate(resources);
         if (template != null) {
             entity = template;
         }
-        File file = writeResource(resourceFileBase, entity, resourceFileType);
+        try {
+            ResourceUtil.save(resourceFileBase, entity, resourceFileType);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to write resource to " + resourceFileType.addExtensionIfMissing(resourceFileBase) + ". " + e, e);
+        }
 
         // write separate files, one for each resource item
         writeIndividualResources(resources, resourceFileBase, resourceFileType, log);
-        return file;
     }
 
     private static void writeIndividualResources(KubernetesList resources, File targetDir, ResourceFileType resourceFileType, Logger log) throws MojoExecutionException {
         for (HasMetadata item : resources.getItems()) {
             String name = KubernetesHelper.getName(item);
-            if (Strings.isNullOrBlank(name)) {
+            if (StringUtils.isBlank(name)) {
                 log.error("No name for generated item %s", item);
                 continue;
             }
-            String itemFile = KubernetesResourceUtil.getNameWithSuffix(name, item.getKind());
-            File itemTarget = new File(targetDir, itemFile);
-            writeResource(itemTarget, item, resourceFileType);
+
+            File targetFile = null;
+            try {
+                String itemFile = KubernetesResourceUtil.getNameWithSuffix(name, item.getKind());
+                targetFile = resourceFileType.addExtensionIfMissing(new File(targetDir, itemFile));
+                ResourceUtil.save(targetFile, item);
+            } catch (IOException e) {
+                throw new MojoExecutionException("Failed to write resource to " + targetFile + ": " + e, e);
+            }
         }
     }
 
-    private static File writeResource(File resourceFileBase, Object entity, ResourceFileType resourceFileType) throws MojoExecutionException {
-        try {
-            return KubernetesResourceUtil.writeResource(entity, resourceFileBase, resourceFileType);
-        } catch (IOException e) {
-            throw new MojoExecutionException("Failed to write resource to " + resourceFileBase + ". " + e, e);
-        }
-    }
 }

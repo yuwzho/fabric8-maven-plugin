@@ -17,11 +17,11 @@ package io.fabric8.maven.plugin.mojo.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.fabric8.kubernetes.api.Annotations;
-import io.fabric8.kubernetes.api.KubernetesHelper;
+import io.fabric8.maven.core.util.ResourceUtil;
+import io.fabric8.maven.core.util.ResourceFileType;
 import io.fabric8.maven.core.util.VersionUtil;
-import io.fabric8.utils.Strings;
+import io.fabric8.maven.core.util.kubernetes.Fabric8Annotations;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -39,7 +39,8 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import static io.fabric8.utils.Strings.isNullOrBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+
 
 /**
  * Generates a Manifest index file by querying a maven repository
@@ -126,8 +127,7 @@ public class ManifestIndexMojo extends AbstractArtifactSearchMojo {
             getLog().debug("" + entry.getKey() + " = " + entry.getValue());
         }
         try {
-            ObjectMapper mapper = KubernetesHelper.createYamlObjectMapper();
-            mapper.writeValue(outputFile, manifests);
+            ResourceUtil.save(outputFile, manifests, ResourceFileType.yaml);
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to write results as YAML to: " + outputFile + ". " + e, e);
         }
@@ -182,7 +182,7 @@ public class ManifestIndexMojo extends AbstractArtifactSearchMojo {
                     writer.println("      <td title='" + manifestDescription + "'>");
                     String iconHtml = "";
                     String iconUrl = findIconURL(set);
-                    if (Strings.isNotBlank(iconUrl)) {
+                    if (StringUtils.isNotBlank(iconUrl)) {
                         iconHtml = "<img class='logo' src='" + iconUrl + "'>";
                     }
                     writer.println("        " + iconHtml + "<span class='manifest-name'>" + key + "</span>");
@@ -226,7 +226,7 @@ public class ManifestIndexMojo extends AbstractArtifactSearchMojo {
     private String findIconURL(Iterable<ManifestInfo> manifestInfos) {
         for (ManifestInfo manifestInfo : manifestInfos) {
             String icon = manifestInfo.getIcon();
-            if (Strings.isNotBlank(icon)) {
+            if (StringUtils.isNotBlank(icon)) {
                 return icon;
             }
         }
@@ -292,23 +292,23 @@ public class ManifestIndexMojo extends AbstractArtifactSearchMojo {
         }
 
         private void updateFromManifest(Object manifest) {
-            if (isNullOrBlank(description)) {
+            if (isBlank(description)) {
                 description = findManifestAnnotation(manifest, "description");
             }
-            if (isNullOrBlank(icon)) {
+            if (isBlank(icon)) {
                 icon = convertRelativeIcon(findManifestIcon(manifest));
             }
-            if (isNullOrBlank(buildUrl)) {
-                buildUrl = findManifestAnnotation(manifest, Annotations.Builds.BUILD_URL);
+            if (isBlank(buildUrl)) {
+                buildUrl = findManifestAnnotation(manifest, Fabric8Annotations.BUILD_URL.value());
             }
-            if (isNullOrBlank(gitUrl)) {
-                gitUrl = findManifestAnnotation(manifest, Annotations.Builds.GIT_URL);
+            if (isBlank(gitUrl)) {
+                gitUrl = findManifestAnnotation(manifest, Fabric8Annotations.GIT_URL.value());
             }
-            if (isNullOrBlank(gitCommit)) {
-                gitCommit = findManifestAnnotation(manifest, Annotations.Builds.GIT_COMMIT);
+            if (isBlank(gitCommit)) {
+                gitCommit = findManifestAnnotation(manifest,  Fabric8Annotations.GIT_COMMIT.value());
             }
-            if (isNullOrBlank(docsUrl)) {
-                docsUrl = findManifestAnnotation(manifest, Annotations.Builds.DOCS_URL);
+            if (isBlank(docsUrl)) {
+                docsUrl = findManifestAnnotation(manifest,Fabric8Annotations.DOCS_URL.value());
             }
         }
 

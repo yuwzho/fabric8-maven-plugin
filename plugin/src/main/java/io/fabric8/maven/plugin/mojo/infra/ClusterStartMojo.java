@@ -15,7 +15,7 @@
  */
 package io.fabric8.maven.plugin.mojo.infra;
 
-import io.fabric8.utils.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -66,7 +66,7 @@ public class ClusterStartMojo extends AbstractInstallMojo {
         arguments.add("start");
         if (isMinishift()) {
             arguments.add("--minishift");
-        } else if (Strings.isNotBlank(clusterKind)) {
+        } else if (StringUtils.isNotBlank(clusterKind)) {
             // lets assume its valid and let gofabric8 fail
             arguments.add("--" + clusterKind);
         }
@@ -77,15 +77,15 @@ public class ClusterStartMojo extends AbstractInstallMojo {
             // TODO add --app= CLI argument when gofabric8 start supports it
             // see https://github.com/fabric8io/gofabric8/issues/224
         }
-        if (Strings.isNotBlank(clusterDriver)) {
+        if (StringUtils.isNotBlank(clusterDriver)) {
             arguments.add("--vm-driver");
             arguments.add(clusterDriver);
         }
-        if (Strings.isNotBlank(clusterCPUs)) {
+        if (StringUtils.isNotBlank(clusterCPUs)) {
             arguments.add("--cpus");
             arguments.add(clusterCPUs);
         }
-        if (Strings.isNotBlank(clusterMemory)) {
+        if (StringUtils.isNotBlank(clusterMemory)) {
             arguments.add("--memory");
             arguments.add(clusterMemory);
         }

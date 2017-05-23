@@ -16,10 +16,9 @@
 package io.fabric8.maven.plugin.mojo.infra;
 
 import io.fabric8.maven.core.util.MavenUtil;
+import io.fabric8.maven.core.util.XmlUtils;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
-import io.fabric8.utils.DomHelper;
-import io.fabric8.utils.Strings;
-import io.fabric8.utils.XmlUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -33,8 +32,6 @@ import org.w3c.dom.Text;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
-
-import static io.fabric8.utils.DomHelper.firstChild;
 
 /**
  * Sets up the current maven project so that the fabric8 maven plugin is defined and setup correctly in the projects pom.xml
@@ -89,7 +86,7 @@ public class SetupMojo extends AbstractFabric8Mojo {
             }
             getLog().info("Updating the pom " + pom);
             try {
-                DomHelper.save(doc, pom);
+                XmlUtils.save(doc, pom);
             } catch (Exception e) {
                 getLog().error("Failed to update pom " + pom + ". " + e, e);
                 throw new MojoExecutionException(e.getMessage(), e);
@@ -114,15 +111,15 @@ public class SetupMojo extends AbstractFabric8Mojo {
         if (updateVersion || pluginMissing) {
             if (useVersionProperty) {
                 Element documentElement = doc.getDocumentElement();
-                Element properties = firstChild(documentElement, "properties");
+                Element properties = XmlUtils.firstChild(documentElement, "properties");
                 if (properties == null) {
                     properties = addChildAfter(appendAfterLastElement(properties, doc.createTextNode("\n      ")), "properties");
                 }
-                if (Strings.isNullOrBlank(currentVersion)) {
+                if (StringUtils.isBlank(currentVersion)) {
                     addChildAfter(appendAfterLastElement(properties, doc.createTextNode("\n    ")), FABRIC8_MAVEN_PLUGIN_VERSION_PROPERTY, latestVersion);
                     updated = true;
                 } else if (!Objects.equals(currentVersion, latestVersion)) {
-                    Element propertyElement = DomHelper.firstChild(properties, FABRIC8_MAVEN_PLUGIN_VERSION_PROPERTY);
+                    Element propertyElement = XmlUtils.firstChild(properties, FABRIC8_MAVEN_PLUGIN_VERSION_PROPERTY);
                     if (propertyElement != null) {
                         propertyElement.setTextContent(latestVersion);
                         updated = true;
@@ -138,11 +135,11 @@ public class SetupMojo extends AbstractFabric8Mojo {
             updated = true;
         }
         if (updateVersion || pluginMissing) {
-            String version = DomHelper.firstChildTextContent(fmpPlugin, "version");
+            String version = XmlUtils.firstChildTextContent(fmpPlugin, "version");
             if (version == null || !version.equals(versionExpression)) {
-                Element versionElement = DomHelper.firstChild(fmpPlugin, "version");
+                Element versionElement = XmlUtils.firstChild(fmpPlugin, "version");
                 if (versionElement == null) {
-                    Element artifactId = DomHelper.firstChild(fmpPlugin, "artifactId");
+                    Element artifactId = XmlUtils.firstChild(fmpPlugin, "artifactId");
                     Text textNode = doc.createTextNode("\n        ");
                     if (artifactId != null) {
                         addChildAfter(artifactId, textNode);
@@ -157,27 +154,27 @@ public class SetupMojo extends AbstractFabric8Mojo {
             }
         }
         if (pluginMissing) {
-            Element executions = firstChild(fmpPlugin, "executions");
+            Element executions = XmlUtils.firstChild(fmpPlugin, "executions");
             if (executions == null) {
                 executions = addChildAfter(appendAfterLastElement(fmpPlugin, doc.createTextNode("\n        ")), "executions");
             } else {
                 // lets remove all the children to be sure
-                DomHelper.removeChildren(executions);
+                XmlUtils.removeChildren(executions);
             }
             executions.appendChild(doc.createTextNode("\n          "));
-            Element execution = DomHelper.addChildElement(executions, "execution");
+            Element execution = XmlUtils.addChildElement(executions, "execution");
             execution.appendChild(doc.createTextNode("\n            "));
 
-            DomHelper.addChildElement(execution, "id", "fmp");
+            XmlUtils.addChildElement(execution, "id", "fmp");
             execution.appendChild(doc.createTextNode("\n            "));
 
-            Element goals = DomHelper.addChildElement(execution, "goals");
+            Element goals = XmlUtils.addChildElement(execution, "goals");
             execution.appendChild(doc.createTextNode("\n          "));
 
             String[] goalNames = {"resource", "helm", "build"};
             for (String goalName : goalNames) {
                 goals.appendChild(doc.createTextNode("\n              "));
-                DomHelper.addChildElement(goals, "goal", goalName);
+                XmlUtils.addChildElement(goals, "goal", goalName);
             }
             goals.appendChild(doc.createTextNode("\n            "));
 
@@ -237,30 +234,30 @@ public class SetupMojo extends AbstractFabric8Mojo {
             return plugin;
         }
         Element documentElement = doc.getDocumentElement();
-        Element build = firstChild(documentElement, "build");
+        Element build = XmlUtils.firstChild(documentElement, "build");
         if (build == null) {
             build = addChildAfter(appendAfterLastElement(documentElement, doc.createTextNode("\n  ")), "build");
         }
-        Element plugins = firstChild(build, "plugins");
+        Element plugins = XmlUtils.firstChild(build, "plugins");
         if (plugins == null) {
             plugins = addChildAfter(appendAfterLastElement(build, doc.createTextNode("\n    ")), "plugins");
         }
 
         plugin = addChildAfter(appendAfterLastElement(plugins, doc.createTextNode("\n      ")), "plugin");
         plugin.appendChild(doc.createTextNode("\n        "));
-        DomHelper.addChildElement(plugin, "groupId", groupId);
+        XmlUtils.addChildElement(plugin, "groupId", groupId);
         plugin.appendChild(doc.createTextNode("\n        "));
-        DomHelper.addChildElement(plugin, "artifactId", artifactId);
+        XmlUtils.addChildElement(plugin, "artifactId", artifactId);
         plugin.appendChild(doc.createTextNode("\n        "));
-        DomHelper.addChildElement(plugin, "version", version);
+        XmlUtils.addChildElement(plugin, "version", version);
         plugin.appendChild(doc.createTextNode("\n      "));
         return plugin;
     }
 
     private Element findPlugin(Document doc, String groupId, String artifactId) {
-        Element build = firstChild(doc.getDocumentElement(), "build");
+        Element build = XmlUtils.firstChild(doc.getDocumentElement(), "build");
         if (build != null) {
-            Element plugins = firstChild(build, "plugins");
+            Element plugins = XmlUtils.firstChild(build, "plugins");
             if (plugins != null) {
                 NodeList childNodes = plugins.getChildNodes();
                 if (childNodes != null) {
@@ -268,8 +265,8 @@ public class SetupMojo extends AbstractFabric8Mojo {
                         Node item = childNodes.item(i);
                         if (item instanceof Element) {
                             Element plugin = (Element) item;
-                            if (Objects.equals(DomHelper.firstChildTextContent(plugin, "groupId"), groupId) &&
-                                    Objects.equals(DomHelper.firstChildTextContent(plugin, "artifactId"), artifactId)) {
+                            if (Objects.equals(XmlUtils.firstChildTextContent(plugin, "groupId"), groupId) &&
+                                    Objects.equals(XmlUtils.firstChildTextContent(plugin, "artifactId"), artifactId)) {
                                 return plugin;
                             }
                         }

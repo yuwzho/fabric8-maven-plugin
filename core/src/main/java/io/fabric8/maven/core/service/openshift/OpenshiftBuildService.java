@@ -23,8 +23,6 @@ import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.fabric8.kubernetes.api.KubernetesHelper;
-import io.fabric8.kubernetes.api.builds.Builds;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
@@ -33,8 +31,7 @@ import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
 import io.fabric8.maven.core.service.BuildService;
 import io.fabric8.maven.core.service.Fabric8ServiceException;
-import io.fabric8.maven.core.util.KubernetesClientUtil;
-import io.fabric8.maven.core.util.KubernetesResourceUtil;
+import io.fabric8.maven.core.util.kubernetes.*;
 import io.fabric8.maven.core.util.ResourceFileType;
 import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
@@ -99,7 +96,7 @@ public class OpenshiftBuildService implements BuildService {
     }
 
     private File getImageStreamFile(BuildServiceConfig config) {
-        return ResourceFileType.yaml.addExtension(new File(config.getBuildDirectory(), String.format("%s-is", config.getArtifactId())));
+        return ResourceFileType.yaml.addExtensionIfMissing(new File(config.getBuildDirectory(), String.format("%s-is", config.getArtifactId())));
     }
 
     @Override
@@ -285,7 +282,7 @@ public class OpenshiftBuildService implements BuildService {
                 logTerminateLatch.countDown();
                 build = buildHolder.get();
                 String status = KubernetesResourceUtil.getBuildStatusPhase(build);
-                if (Builds.isFailed(status) || Builds.isCancelled(status)) {
+                if (OpenshiftHelper.isFailed(status) || OpenshiftHelper.isCancelled(status)) {
                     throw new MojoExecutionException("OpenShift Build " + buildName + ": " + KubernetesResourceUtil.getBuildStatusReason(build));
                 }
                 log.info("Build " + buildName + " " + status);
@@ -317,7 +314,7 @@ public class OpenshiftBuildService implements BuildService {
                     lastStatus = status;
                     log.verbose("Build %s status: %s", buildName, status);
                 }
-                if (Builds.isFinished(status)) {
+                if (OpenshiftHelper.isFinished(status)) {
                     latch.countDown();
                 }
             }

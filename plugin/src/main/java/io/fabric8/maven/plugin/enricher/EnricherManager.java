@@ -18,6 +18,7 @@ package io.fabric8.maven.plugin.enricher;
 
 import java.util.*;
 
+import com.google.common.base.Function;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
 import io.fabric8.maven.core.config.MetaDataConfig;
 import io.fabric8.maven.core.config.ProcessorConfig;
@@ -28,7 +29,6 @@ import io.fabric8.maven.docker.util.Logger;
 import io.fabric8.maven.enricher.api.Enricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.maven.enricher.api.Kind;
-import io.fabric8.utils.Function;
 
 import static io.fabric8.maven.plugin.enricher.EnricherManager.Extractor.*;
 

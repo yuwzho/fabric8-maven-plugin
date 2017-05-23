@@ -39,6 +39,7 @@
     <module>parent</module>
     <module>core</module>
     <module>plugin</module>
+    <module>fabric8/project</module>
     <module>enricher/api</module>
     <module>enricher/standard</module>
     <module>enricher/fabric8</module>

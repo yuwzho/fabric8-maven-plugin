@@ -15,8 +15,6 @@
  */
 package io.fabric8.maven.plugin.mojo.build;
 
-import io.fabric8.kubernetes.api.Annotations;
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.api.model.HasMetadata;
@@ -24,11 +22,11 @@ import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
-import io.fabric8.maven.core.util.ClassUtil;
-import io.fabric8.maven.core.util.ResourceClassifier;
+import io.fabric8.maven.core.util.*;
+import io.fabric8.maven.core.util.kubernetes.KubernetesHelper;
 import io.fabric8.openshift.api.model.Template;
 import io.fabric8.openshift.api.model.TemplateBuilder;
-import io.fabric8.utils.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -49,12 +47,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static io.fabric8.kubernetes.api.KubernetesHelper.getName;
-import static io.fabric8.kubernetes.api.KubernetesHelper.getOrCreateAnnotations;
 import static io.fabric8.maven.core.util.Constants.RESOURCE_APP_CATALOG_ANNOTATION;
 import static io.fabric8.maven.core.util.ResourceClassifier.KUBERNETES_TEMPLATE;
-import static io.fabric8.utils.Lists.notNullList;
-
+import static io.fabric8.maven.core.util.kubernetes.Fabric8Annotations.*;
 
 /**
  * Generates an App Catalog for kubernetes and openshift
@@ -67,13 +62,14 @@ import static io.fabric8.utils.Lists.notNullList;
         requiresDependencyResolution = ResolutionScope.COMPILE, requiresDependencyCollection = ResolutionScope.COMPILE)
 public class AppCatalogMojo extends AbstractResourceMojo {
     /** defines the annotations copied from resources into the Template or ConfigMap in the app catalog */
-    private Set<String> copiedAnnotations = new HashSet<>(Arrays.asList(Annotations.Builds.BUILD_URL,
-            Annotations.Builds.BUILD_URL, Annotations.Builds.BUILD_ID, Annotations.Builds.DOCS_URL,
-            Annotations.Builds.GIT_URL, Annotations.Builds.GIT_COMMIT, Annotations.Builds.GIT_BRANCH,
-            Annotations.Builds.ICON_URL));
-
-    public AppCatalogMojo() {
-    }
+    private Set<String> copiedAnnotations = new HashSet<>(
+        Arrays.asList(
+            BUILD_URL.value(),
+            BUILD_ID.value(),
+            DOCS_URL.value(),
+            GIT_URL.value(),
+            GIT_BRANCH.value(),
+            ICON_URL.value()));
 
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
         List<HasMetadata> openshiftResources = new ArrayList<>();
@@ -87,8 +83,8 @@ public class AppCatalogMojo extends AbstractResourceMojo {
             Template template = null;
             if (resource instanceof Template) {
                 template = (Template) resource;
-                getOrCreateAnnotations(template).put(RESOURCE_APP_CATALOG_ANNOTATION, "true");
-                log.debug("Found Template " + getName(template) + " with " + notNullList(template.getParameters()).size() + " parameters");
+                KubernetesHelper.getOrCreateAnnotations(template).put(RESOURCE_APP_CATALOG_ANNOTATION, "true");
+                log.debug("Found Template " + KubernetesHelper.getName(template) + " with " + template.getParameters().size() + " parameters");
             } else {
                 TemplateBuilder builder = new TemplateBuilder();
                 boolean foundMetadata = false;
@@ -96,9 +92,9 @@ public class AppCatalogMojo extends AbstractResourceMojo {
                     HasMetadata hasMetadata = (HasMetadata) resource;
                     ObjectMeta metadata = hasMetadata.getMetadata();
                     if (metadata != null) {
-                        if (Strings.isNotBlank(metadata.getName())) {
+                        if (StringUtils.isNotBlank(metadata.getName())) {
                             foundMetadata = true;
-                            getOrCreateAnnotations(hasMetadata).put(RESOURCE_APP_CATALOG_ANNOTATION, "true");
+                            KubernetesHelper.getOrCreateAnnotations(hasMetadata).put(RESOURCE_APP_CATALOG_ANNOTATION, "true");
                             builder.withMetadata(metadata);
                         }
                     }
@@ -112,7 +108,7 @@ public class AppCatalogMojo extends AbstractResourceMojo {
                         log.debug("Ignoring local build dependency %s", url);
                         continue;
                     }
-                    if (Strings.isNullOrBlank(name)) {
+                    if (StringUtils.isBlank(name)) {
                         log.warn("Cannot generate a template name from URL: %s", url);
                         continue;
                     }
@@ -142,8 +138,8 @@ public class AppCatalogMojo extends AbstractResourceMojo {
             KubernetesResource<?> resource = entry.getValue();
             if (resource instanceof Template) {
                 Template template = (Template) resource;
-                String name = getName(template);
-                if (Strings.isNullOrBlank(name)) {
+                String name = KubernetesHelper.getName(template);
+                if (StringUtils.isBlank(name)) {
                     log.warn("Ignoring Template from %s as it has no name!", url);
                     continue;
                 }
@@ -168,7 +164,7 @@ public class AppCatalogMojo extends AbstractResourceMojo {
                 log.debug("Ignoring local build dependency %s", url);
                 continue;
             }
-            if (Strings.isNullOrBlank(name)) {
+            if (StringUtils.isBlank(name)) {
                 log.warn("Cannot generate a template name from URL: %s", url);
                 continue;
             }
@@ -204,14 +200,14 @@ public class AppCatalogMojo extends AbstractResourceMojo {
             Template template = entry.getValue();
             String templateYaml = null;
             try {
-                templateYaml = KubernetesHelper.toYaml(template);
+                templateYaml = ResourceUtil.toYaml(template);
             } catch (IOException e) {
                 throw new MojoExecutionException("Failed to convert template " + name + " into YAML: " + e, e);
             }
             String catalogName = "catalog-" + name;
 
             Map<String, String> labels = new LinkedHashMap<>(KubernetesHelper.getLabels(template));
-            Map<String, String> annotations = getOrCreateAnnotations(template);
+            Map<String, String> annotations = KubernetesHelper.getOrCreateAnnotations(template);
             annotations.put(RESOURCE_APP_CATALOG_ANNOTATION, "true");
             populateLabelsFromResources(template, labels);
             populateAnnotationsFromResources(template, annotations);
@@ -346,7 +342,7 @@ public class AppCatalogMojo extends AbstractResourceMojo {
                 if (is != null) {
                     KubernetesResource<?> resource;
                     try {
-                        resource = KubernetesHelper.loadYaml(is, KubernetesResource.class);
+                        resource = ResourceUtil.load(is, KubernetesResource.class, ResourceFileType.yaml);
                         resourceMap.put(url, resource);
                     } catch (IOException e) {
                         log.warn("Ignoring resource %s as it could not be parsed: %s", url, e);

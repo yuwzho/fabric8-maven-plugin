@@ -16,18 +16,16 @@
 
 package io.fabric8.maven.core.util;
 
-import io.fabric8.utils.Objects;
-import io.fabric8.utils.Strings;
-import io.fabric8.utils.Zips;
+import com.google.common.base.Objects;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.shared.utils.StringUtils;
-import org.codehaus.plexus.archiver.jar.JarArchiver;
 import org.codehaus.plexus.archiver.tar.TarArchiver;
 import org.codehaus.plexus.archiver.tar.TarLongFileMode;
 import org.codehaus.plexus.archiver.zip.ZipArchiver;
+import org.codehaus.plexus.archiver.zip.ZipUnArchiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,15 +67,6 @@ public class MavenUtil {
             }
         }
         return false;
-    }
-
-    public static File extractKubernetesJson(File f, Path dir) throws IOException {
-        if (hasKubernetesJson(f)) {
-            Zips.unzip(new FileInputStream(f), dir.toFile());
-            File result = dir.resolve(DEFAULT_CONFIG_FILE_NAME).toFile();
-            return result.exists() ? result : null;
-        }
-        return null;
     }
 
     public static URLClassLoader getCompileClassLoader(MavenProject project) {
@@ -248,16 +237,6 @@ public class MavenUtil {
         }
     }
 
-    public static void createArchive(File sourceDir, File destinationFile, JarArchiver archiver) throws MojoExecutionException {
-        try {
-            archiver.addDirectory(sourceDir);
-            archiver.setDestFile(destinationFile);
-            archiver.createArchive();
-        } catch (IOException e) {
-            throw new MojoExecutionException("Failed to create archive " + destinationFile + ": " + e, e);
-        }
-    }
-
     /**
      * Returns the version from the list of pre-configured versions of common groupId/artifact pairs
      */
@@ -274,7 +253,7 @@ public class MavenUtil {
             throw new IOException("Failed to load " + path + ". " + e, e);
         }
         String version = properties.getProperty("version");
-        if (Strings.isNullOrBlank(version)) {
+        if (StringUtils.isBlank(version)) {
             throw new IOException("No version property in " + path);
 
         }

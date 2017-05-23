@@ -21,7 +21,7 @@ import com.jayway.jsonpath.matchers.JsonPathMatchers;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
 import io.fabric8.maven.core.config.ProcessorConfig;
-import io.fabric8.maven.core.util.KubernetesResourceUtil;
+import io.fabric8.maven.core.util.ResourceUtil;
 import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.enricher.api.EnricherContext;
@@ -86,7 +86,7 @@ public class DefaultControllerEnricherTest {
         KubernetesList list = builder.build();
         assertEquals(sizeOfObjects, list.getItems().size());
 
-        String json = KubernetesResourceUtil.toJson(list.getItems().get(0));
+        String json = ResourceUtil.toJson(list.getItems().get(0));
         assertThat(json, JsonPathMatchers.isJson());
         assertThat(json, JsonPathMatchers.hasJsonPath("$.spec.replicas", Matchers.equalTo(replicaCount)));
     }

@@ -19,8 +19,9 @@ import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.util.IoUtil;
 import io.fabric8.maven.core.util.ProcessUtil;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
-import io.fabric8.utils.IOHelpers;
-import io.fabric8.utils.Strings;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -241,7 +242,7 @@ public abstract class AbstractInstallMojo extends AbstractFabric8Mojo {
         if (!tempFile.renameTo(destFile)) {
             // lets try copy it instead as this could be an odd linux issue with renaming files
             try {
-                IOHelpers.copy(new FileInputStream(tempFile), new FileOutputStream(destFile));
+                FileUtils.copyFile(tempFile,destFile);
                 log.info("Downloaded gofabric8 to %s",destFile);
             } catch (IOException e) {
                 throw new MojoExecutionException("Failed to copy temporary file " + tempFile + " to " + destFile + ": " + e, e);
@@ -255,8 +256,7 @@ public abstract class AbstractInstallMojo extends AbstractFabric8Mojo {
     // Download version for gofabric8
     private String getGoFabric8Version() throws MojoExecutionException {
         try {
-            String version = IOHelpers.readFully(new URL(GOFABRIC8_VERSION_URL));
-            return version;
+            return IOUtils.toString(new URL(GOFABRIC8_VERSION_URL));
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to load gofabric8 version from " + GOFABRIC8_VERSION_URL + ". " + e, e);
         }
@@ -286,7 +286,7 @@ public abstract class AbstractInstallMojo extends AbstractFabric8Mojo {
         // Be sure to run in batch mode
         List<String> argList = new ArrayList<>(Arrays.asList(args));
         argList.add("--batch");
-        String argLine = Strings.join(argList, " ");
+        String argLine = StringUtils.join(argList, " ");
         log.info("Running %s %s", command, argLine);
 
         String message = command.getName() + " " + argLine;
@@ -301,7 +301,7 @@ public abstract class AbstractInstallMojo extends AbstractFabric8Mojo {
     }
 
     protected boolean isMinishift() {
-        if (Strings.isNotBlank(clusterKind)) {
+        if (StringUtils.isNotBlank(clusterKind)) {
             String text = clusterKind.toLowerCase().trim();
             return text.equals("minishift") || text.equals("openshift");
         } else if (mode != null && mode == PlatformMode.openshift) {

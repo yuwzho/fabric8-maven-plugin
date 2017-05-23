@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.fabric8.maven.core.util.KubernetesResourceUtil.setEnvVar;
+import static io.fabric8.maven.core.util.kubernetes.KubernetesResourceUtil.setEnvVar;
 
 /**
  * Enricher for adding docker image environment variables to the manifest when using
