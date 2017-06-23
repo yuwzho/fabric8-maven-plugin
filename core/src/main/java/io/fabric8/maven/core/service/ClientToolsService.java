@@ -39,7 +39,7 @@ public class ClientToolsService {
         }
         if (file == null) {
             throw new IllegalStateException("Could not find kubectl (or oc)" +
-                    ". Please try running `mvn fabric8:install` to install the necessary binaries and ensure they get added to your $PATH");
+                    ". Please install the necessary binaries and ensure they get added to your $PATH");
         }
         return file;
     }
