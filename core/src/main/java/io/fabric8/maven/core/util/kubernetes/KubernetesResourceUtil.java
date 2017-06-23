@@ -23,7 +23,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -41,16 +40,15 @@ import io.fabric8.kubernetes.api.model.extensions.*;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.internal.HasMetadataComparator;
 import io.fabric8.maven.core.util.ResourceUtil;
-import io.fabric8.maven.core.util.ResourceFileType;
 import io.fabric8.maven.core.util.ResourceVersioning;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.docker.util.ImageName;
 import io.fabric8.maven.docker.util.Logger;
 import io.fabric8.openshift.api.model.*;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
+import org.slf4j.LoggerFactory;
 
 import static io.fabric8.maven.core.util.Constants.*;
 
@@ -62,6 +60,8 @@ import static io.fabric8.maven.core.util.Constants.*;
  */
 public class KubernetesResourceUtil {
 
+    private static final transient org.slf4j.Logger LOG = LoggerFactory.getLogger(KubernetesResourceUtil.class);
+
     public static final String API_VERSION = "v1";
     public static final String API_EXTENSIONS_VERSION = "extensions/v1beta1";
     public static final String API_APPS_VERSION = "apps/v1beta1";
@@ -71,6 +71,8 @@ public class KubernetesResourceUtil {
             .withAppsVersion(API_APPS_VERSION);
 
     public static final HashSet<Class<?>> SIMPLE_FIELD_TYPES = new HashSet<>();
+
+    protected static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ssX";
 
 
     /**
@@ -486,17 +488,25 @@ public class KubernetesResourceUtil {
     public static Date getCreationTimestamp(HasMetadata hasMetadata) {
         ObjectMeta metadata = hasMetadata.getMetadata();
         if (metadata != null) {
-            String text = metadata.getCreationTimestamp();
-            if (text == null) {
-                return null;
-            }
-            try {
-                return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX").parse(text);
-            } catch (ParseException e) {
-               throw new IllegalArgumentException("Failed to parse date: " + text + ". Reason: " + e);
-            }
+            return parseTimestamp(metadata.getCreationTimestamp());
         }
         return null;
+    }
+
+    private static Date parseTimestamp(String text) {
+        if (StringUtils.isBlank(text)) {
+            return null;
+        }
+        return parseDate(text);
+    }
+
+    public static Date parseDate(String text) {
+        try {
+            return new SimpleDateFormat(DATE_TIME_FORMAT).parse(text);
+        } catch (ParseException e) {
+            LOG.warn("Unable to parse date: " + text, e);
+            return null;
+        }
     }
 
     public static boolean podHasContainerImage(Pod pod, String imageName) {
