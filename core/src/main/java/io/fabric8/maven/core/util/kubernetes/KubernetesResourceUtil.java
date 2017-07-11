@@ -149,6 +149,7 @@ public class KubernetesResourceUtil {
             "cr", "ClusterRole",
             "crole", "ClusterRole",
             "clusterrole", "ClusterRole",
+            "crd", "CustomResourceDefinition",
             "crb", "ClusterRoleBinding",
             "clusterrb", "ClusterRoleBinding",
             "cj", "CronJob",

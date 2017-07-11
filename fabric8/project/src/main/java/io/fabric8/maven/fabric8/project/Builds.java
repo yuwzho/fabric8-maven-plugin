@@ -95,7 +95,7 @@ public class Builds {
                 EnvVar envVar = new EnvVar();
                 envVar.setName("BASE_URI");
                 envVar.setValue(jenkinsUrl);
-                buildStrategy.setEnv(Collections.singletonList(envVar));
+                //buildStrategy.setEnv(Collections.singletonList(envVar));
             }
             buildStrategy.setJenkinsfilePath("Jenkinsfile");
         }

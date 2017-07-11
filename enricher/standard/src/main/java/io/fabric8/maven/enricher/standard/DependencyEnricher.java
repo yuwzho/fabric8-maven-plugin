@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -50,9 +52,11 @@ import java.util.Set;
  */
 public class DependencyEnricher extends BaseEnricher {
     private static String DEPENDENCY_KUBERNETES_YAML = "META-INF/fabric8/kubernetes.yml";
+    private static String DEPENDENCY_KUBERNETES_TEMPLATE_YAML = "META-INF/fabric8/k8s-template.yml";
     private static String DEPENDENCY_OPENSHIFT_YAML = "META-INF/fabric8/openshift.yml";
 
     private Set<URL> kubernetesDependencyArtifacts = new HashSet<>();
+    private Set<URL> kubernetesTemplateDependencyArtifacts = new HashSet<>();
     private Set<URL> openshiftDependencyArtifacts = new HashSet<>();
 
     // Available configuration keys
@@ -76,6 +80,7 @@ public class DependencyEnricher extends BaseEnricher {
         super(buildContext, "fmp-dependency");
 
         addArtifactsWithYaml(buildContext, kubernetesDependencyArtifacts, DEPENDENCY_KUBERNETES_YAML);
+        addArtifactsWithYaml(buildContext, kubernetesTemplateDependencyArtifacts, DEPENDENCY_KUBERNETES_TEMPLATE_YAML);
         addArtifactsWithYaml(buildContext, openshiftDependencyArtifacts, DEPENDENCY_OPENSHIFT_YAML);
 
     }
@@ -114,13 +119,37 @@ public class DependencyEnricher extends BaseEnricher {
 
     @Override
     public void adapt(final KubernetesListBuilder builder) {
+        final List<HasMetadata> kubernetesItems = new ArrayList<>();
         processArtifactSetResources(this.kubernetesDependencyArtifacts, new Function<List<HasMetadata>, Void>() {
             @Override
             public Void apply(List<HasMetadata> items) {
-                builder.addToItems(items.toArray(new HasMetadata[items.size()]));
+                kubernetesItems.addAll(Arrays.asList(items.toArray(new HasMetadata[items.size()])));
                 return null;
             }
         });
+        processArtifactSetResources(this.kubernetesTemplateDependencyArtifacts, new Function<List<HasMetadata>, Void>() {
+            @Override
+            public Void apply(List<HasMetadata> items) {
+                List<HasMetadata> templates = Arrays.asList(items.toArray(new HasMetadata[items.size()]));
+
+                // lets remove all the plain resources (without any ${PARAM} expressions) which match objects
+                // in the Templates found from the k8s-templates.yml files which still contain ${PARAM} expressions
+                // to preserve the parameter expressions for dependent kubernetes resources
+                for (HasMetadata resource : templates) {
+                    if (resource instanceof Template) {
+                        Template template = (Template) resource;
+                        List<HasMetadata> objects = template.getObjects();
+                        if (objects != null) {
+                            removeTemplateObjects(kubernetesItems, objects);
+                            kubernetesItems.addAll(objects);
+                        }
+                    }
+                }
+                return null;
+            }
+        });
+        builder.addToItems(kubernetesItems.toArray(new HasMetadata[kubernetesItems.size()]));
+
         processArtifactSetResources(this.openshiftDependencyArtifacts, new Function<List<HasMetadata>, Void>() {
             @Override
             public Void apply(List<HasMetadata> items) {
@@ -135,6 +164,19 @@ public class DependencyEnricher extends BaseEnricher {
                 return null;
             }
         });
+    }
+
+    private void removeTemplateObjects(List<HasMetadata> list, List<HasMetadata> objects) {
+        for (HasMetadata object : objects) {
+            List<HasMetadata> copy = new ArrayList<>(list);
+            for (HasMetadata resource : copy) {
+                if (Objects.equals(resource.getKind(), object.getKind()) &&
+                        Objects.equals(KubernetesHelper.getName(object), KubernetesHelper.getName(resource))) {
+                    list.remove(resource);
+                }
+            }
+        }
+
     }
 
     private void processArtifactSetResources(Set<URL> artifactSet, Function<List<HasMetadata>, Void> function) {

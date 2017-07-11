@@ -19,7 +19,7 @@
 
   <groupId>io.fabric8</groupId>
   <artifactId>fabric8-maven-parent</artifactId>
-  <version>3.4-SNAPSHOT</version>
+  <version>3.5-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <prerequisites>
@@ -60,11 +60,11 @@
     <assertj.core.version>2.4.1</assertj.core.version>
 
     <!-- latest release version of this plugin. Used in the docs.-->
-    <fabric8.maven.plugin.version>3.2.28</fabric8.maven.plugin.version>
+    <fabric8.maven.plugin.version>3.5.1</fabric8.maven.plugin.version>
 
     <version.maven>3.3.1</version.maven>
     <version.jacoco>0.7.8</version.jacoco>
-    <version.kubernetes-client>2.3.1</version.kubernetes-client>
+    <version.kubernetes-client>2.5.2</version.kubernetes-client>
     <version.openshift-client>${version.kubernetes-client}</version.openshift-client>
     <version.mockwebserver>0.0.13</version.mockwebserver>
     <version.docker-maven-plugin>0.21.0</version.docker-maven-plugin>
