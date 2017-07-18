@@ -17,6 +17,7 @@ package io.fabric8.maven.plugin.mojo.build;
 
 
 import java.io.File;
+import java.io.FilterInputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -326,6 +327,14 @@ public class ApplyMojo extends AbstractFabric8Mojo {
         }
     }
 
+    protected File getOpenShiftManifest() {
+        return this.openshiftManifest;
+    }
+
+    protected File getKubernetesManifest() {
+        return this.kubernetesManifest;
+    }
+
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
         clusterAccess = new ClusterAccess(namespace);
 
@@ -334,10 +343,11 @@ public class ApplyMojo extends AbstractFabric8Mojo {
             URL masterUrl = kubernetes.getMasterUrl();
             File manifest;
             if (KubernetesHelper.isOpenShift(kubernetes)) {
-                manifest = openshiftManifest;
+                manifest = getOpenShiftManifest();
             } else {
-                manifest = kubernetesManifest;
+                manifest = getKubernetesManifest();
             }
+
             if (!Files.isFile(manifest)) {
                 if (failOnNoKubernetesJson) {
                     throw new MojoFailureException("No such generated manifest file: " + manifest);

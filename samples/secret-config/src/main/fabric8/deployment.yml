@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: yuwzhospringbootdocker
+  labels:
+    run: spring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: spring
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: spring
+    spec:
+      containers:
+      - image: yuwzhoacr.azurecr.io/gs-spring-boot-docker
+        name: spring-boot
+      imagePullSecrets:
+        - name: mydockerkey
