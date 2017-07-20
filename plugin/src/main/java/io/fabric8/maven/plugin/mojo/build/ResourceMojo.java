@@ -35,6 +35,7 @@ import io.fabric8.maven.docker.config.handler.ImageConfigResolver;
 import io.fabric8.maven.docker.util.EnvUtil;
 import io.fabric8.maven.docker.util.ImageNameFormatter;
 import io.fabric8.maven.docker.util.Logger;
+import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.maven.enricher.api.util.InitContainerHandler;
 import io.fabric8.maven.enricher.standard.VolumePermissionEnricher;
@@ -213,6 +214,10 @@ public class ResourceMojo extends AbstractResourceMojo {
 
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
         clusterAccess = new ClusterAccess(namespace);
+
+        // apply the settings file to enricher
+        BaseEnricher.applySettings(this.settings);
+
         try {
             lateInit();
 

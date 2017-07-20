@@ -268,4 +268,19 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
             return item.hasMetadata() ? item.buildMetadata() : item.withNewMetadata().endMetadata().buildMetadata();
         }
     }
+
+    public static class SecretBuilderVisitor extends MetadataVisitor<SecretBuilder> {
+        SecretBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) { super(resourceConfig, enricher);}
+
+
+        @Override
+        protected Kind getKind() {
+            return Kind.SECRET;
+        }
+
+        @Override
+        protected ObjectMeta getOrCreateMetadata(SecretBuilder item) {
+            return item.hasMetadata() ? item.buildMetadata() : item.withNewMetadata().endMetadata().buildMetadata();
+        }
+    }
 }

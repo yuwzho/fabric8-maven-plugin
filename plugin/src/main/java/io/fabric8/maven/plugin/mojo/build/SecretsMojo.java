@@ -25,16 +25,6 @@ import java.util.Map;
 @Mojo(name = "secret", defaultPhase = LifecyclePhase.PROCESS_RESOURCES, requiresDependencyResolution = ResolutionScope.COMPILE)
 public class SecretsMojo extends AbstractResourceMojo {
 
-//    @Component(role = MavenFileFilter.class, hint = "secret-filter")
-//    private MavenFileFilter _mavenFileFilter;
-//
-//    @Parameter(property = "fabric8.secretDir", defaultValue = "${basedir}/src/main/fabric8/secret")
-//    private File _resourceDir;
-//
-//    @Parameter(property = "fabric8.secretTarget", defaultValue = "${project.build.directory}/secret")
-//    private File _targetDir;
-
-
     @Parameter(property = "fabric8.secrets")
     private List<SecretConfig> secrets;
 
@@ -45,21 +35,6 @@ public class SecretsMojo extends AbstractResourceMojo {
         this.targetDir = new File(this.targetDir, "secrets");
         writeResources(secretResource, ResourceClassifier.KUBERNETES);
 
-
-//        File source = new File(_resourceDir, "password-secret.yml");
-//        File target = new File(_targetDir, "secret.yml");
-//        try {
-//            target.createNewFile();
-//        } catch (IOException e) {
-//            getLog().error(target.getAbsolutePath());
-//            e.printStackTrace();
-//        }
-//
-//        try {
-//            _mavenFileFilter.copyFile(source, target, true, project, new ArrayList<String>(), false, "utf8", session);
-//        } catch (MavenFilteringException e) {
-//            e.printStackTrace();
-//        }
     }
 
     final private static String API_VERSION = "v1";
