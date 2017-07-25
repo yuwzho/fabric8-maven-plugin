@@ -58,7 +58,7 @@
     - docker-image
 # end::default[]
 # Can also process secret file in to general yaml
-- name: secret
+- name: secrets
   enricher:
     includes:
     - fmp-docker-registry-secret

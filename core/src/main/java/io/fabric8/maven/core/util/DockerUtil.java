@@ -7,7 +7,7 @@ import org.json.JSONObject;
 
 public class DockerUtil {
     public static Server getServer(final Settings settings, final String serverId) {
-        if (settings == null || serverId == null || serverId.trim().length() == 0) {
+        if (settings == null || Strings.isNullOrBlank(serverId)) {
             return null;
         }
         return settings.getServer(serverId);

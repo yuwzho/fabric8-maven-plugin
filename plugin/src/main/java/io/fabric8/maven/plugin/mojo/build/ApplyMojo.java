@@ -17,7 +17,6 @@ package io.fabric8.maven.plugin.mojo.build;
 
 
 import java.io.File;
-import java.io.FilterInputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;

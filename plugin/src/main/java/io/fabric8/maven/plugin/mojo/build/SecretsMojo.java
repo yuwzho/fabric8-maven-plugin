@@ -28,17 +28,14 @@ import java.util.Map;
  * Generates or copies the Kubernetes JSON secrets file and attaches it to the build so its
  * installed and released to maven repositories like other build artifacts.
  */
-@Mojo(name = "secret", defaultPhase = LifecyclePhase.PROCESS_RESOURCES, requiresDependencyResolution = ResolutionScope.COMPILE)
+@Mojo(name = "secrets", defaultPhase = LifecyclePhase.PROCESS_RESOURCES, requiresDependencyResolution = ResolutionScope.COMPILE)
 public class SecretsMojo extends ResourceMojo {
 
     @Parameter(property = "fabric8.secrets")
     private List<SecretConfig> secrets;
 
-    @Parameter(property = "fabric8.secretsDir", defaultValue = "${basedir}/src/main/secrets")
-    private File sourceDir;
-
     private final static String[] _enricherBlcakList = null;
-    private final static String[] _enricherWhiteList = {"secret"};
+    private final static String[] _enricherWhiteList = {SecretConstants.FOLDER_NAME};
 
     @Override
     protected String[] getEnricherBlackList() {
@@ -52,7 +49,7 @@ public class SecretsMojo extends ResourceMojo {
 
     @Override
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
-        this.targetDir = new File(this.targetDir, "secrets");
+        this.targetDir = new File(this.targetDir, SecretConstants.FOLDER_NAME);
         super.executeInternal();
     }
 

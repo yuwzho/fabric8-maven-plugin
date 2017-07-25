@@ -15,18 +15,6 @@
  */
 package io.fabric8.maven.plugin.mojo.build;
 
-<<<<<<< HEAD
-=======
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.util.*;
-import java.util.Arrays;
-import java.util.Objects;
-
-import javax.validation.ConstraintViolationException;
-
->>>>>>> add yaml resource
 import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.extensions.Templates;
@@ -40,7 +28,6 @@ import io.fabric8.maven.core.handler.ServiceHandler;
 import io.fabric8.maven.core.service.ComposeService;
 import io.fabric8.maven.core.service.Fabric8ServiceException;
 import io.fabric8.maven.core.util.*;
-import io.fabric8.maven.core.util.Constants;
 import io.fabric8.maven.docker.AbstractDockerMojo;
 import io.fabric8.maven.docker.config.ConfigHelper;
 import io.fabric8.maven.docker.config.ImageConfiguration;

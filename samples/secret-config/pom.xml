@@ -55,7 +55,7 @@
                     <execution>
                         <goals>
                             <goal>resource</goal>
-                            <goal>secret</goal>
+                            <goal>secrets</goal>
                         </goals>
                     </execution>
                 </executions>

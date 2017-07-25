@@ -272,7 +272,6 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
     public static class SecretBuilderVisitor extends MetadataVisitor<SecretBuilder> {
         SecretBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) { super(resourceConfig, enricher);}
 
-
         @Override
         protected Kind getKind() {
             return Kind.SECRET;
