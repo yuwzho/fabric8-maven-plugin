@@ -29,10 +29,6 @@
         <version>1.3.6.RELEASE</version>
     </parent>
 
-    <properties>
-        <docker.id>yuwzhoacr</docker.id>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -63,7 +59,7 @@
                     <secrets>
                         <secretConfig>
                             <dockerId>yuwzhoacr</dockerId>
-                            <name>mydockerkey</name>
+                            <name>yuwzhoacr</name>
                         </secretConfig>
                     </secrets>
                 </configuration>

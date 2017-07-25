@@ -1,6 +1,7 @@
 package io.fabric8.maven.enricher.standard;
 
 import io.fabric8.maven.core.util.DockerUtil;
+import io.fabric8.maven.core.util.SecretConstants;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.utils.Strings;
 
@@ -9,7 +10,6 @@ import java.util.Map;
 
 public class DockerRegistrySecretEnricher extends SecretEnricher {
     final private static String ANNOTATION_KEY = "maven.fabric8.io/dockerId";
-    final private static String DOCKER_KEY = ".dockerconfigjson";
     final private static String ENRICHER_NAME = "fmp-docker-registry-secret";
 
 
@@ -30,7 +30,7 @@ public class DockerRegistrySecretEnricher extends SecretEnricher {
         }
 
         Map<String, String> data = new HashMap();
-        data.put(DOCKER_KEY, encode(dockerSecret));
+        data.put(SecretConstants.DOCKER_DATA_KEY, encode(dockerSecret));
         return data;
     }
 }
