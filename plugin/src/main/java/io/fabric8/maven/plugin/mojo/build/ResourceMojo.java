@@ -804,7 +804,7 @@ public class ResourceMojo extends AbstractResourceMojo {
         return null;
     }
 
-    private final static String[] _enricherBlackList = {"secret"};
+    private final static String[] _enricherBlackList = {SecretConstants.FOLDER_NAME};
     protected String[] getEnricherBlackList() {
         return _enricherBlackList;
     }
