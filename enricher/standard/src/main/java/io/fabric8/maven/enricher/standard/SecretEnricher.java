@@ -6,13 +6,12 @@ import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.maven.core.util.Base64Util;
 import io.fabric8.maven.enricher.api.BaseEnricher;
 import io.fabric8.maven.enricher.api.EnricherContext;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Map;
 
-public abstract class SecretEncricher extends BaseEnricher {
+public abstract class SecretEnricher extends BaseEnricher {
 
-    public SecretEncricher(EnricherContext buildContext, String name) {
+    public SecretEnricher(EnricherContext buildContext, String name) {
         super(buildContext, name);
     }
 
@@ -23,13 +22,22 @@ public abstract class SecretEncricher extends BaseEnricher {
     @Override
     public void addMissingResources(KubernetesListBuilder builder) {
         // update builder
+        // use a selector to choose all secret builder in kubernetes list builders.
+        // try to find the target annotations
+        // use the annotation value to generate data
+        // add generated data to this builder
         builder.accept(new TypedVisitor<SecretBuilder>() {
             @Override
             public void visit(SecretBuilder secretBuilder) {
                 Map<String, String> annotation = secretBuilder.buildMetadata().getAnnotations();
-                if (!annotation.containsKey(getAnnotationKey())) { return; }
+                if (!annotation.containsKey(getAnnotationKey())) {
+                    return;
+                }
                 String dockerId = annotation.get(getAnnotationKey());
                 Map<String, String> data = generateData(dockerId);
+                if (data == null) {
+                    return;
+                }
                 secretBuilder.addToData(data);
             }
         });

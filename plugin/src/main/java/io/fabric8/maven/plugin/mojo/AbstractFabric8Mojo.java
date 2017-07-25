@@ -35,6 +35,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.settings.Settings;
 
+import java.io.IOException;
+
 public abstract class AbstractFabric8Mojo extends AbstractMojo {
 
     @Parameter(defaultValue = "${project}", readonly = true)

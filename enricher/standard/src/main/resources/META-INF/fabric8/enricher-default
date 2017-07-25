@@ -63,5 +63,5 @@ io.fabric8.maven.enricher.standard.MavenScmEnricher
 io.fabric8.maven.enricher.standard.MavenIssueManagementEnricher
 
 # Resolve the docker registry things
-io.fabric8.maven.enricher.standard.DockerRegistrySecretEntricher
+io.fabric8.maven.enricher.standard.DockerRegistrySecretEnricher
 

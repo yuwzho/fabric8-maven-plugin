@@ -3,19 +3,18 @@ package io.fabric8.maven.enricher.standard;
 import io.fabric8.maven.core.util.DockerUtil;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.utils.Strings;
-import org.apache.maven.settings.Settings;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class DockerRegistrySecretEntricher extends SecretEncricher {
+public class DockerRegistrySecretEnricher extends SecretEnricher {
     final private static String ANNOTATION_KEY = "maven.fabric8.io/dockerId";
     final private static String DOCKER_KEY = ".dockerconfigjson";
-    final private static String ENCRICHER_NAME = "fmp-docker-registry-secret";
+    final private static String ENRICHER_NAME = "fmp-docker-registry-secret";
 
 
-    public DockerRegistrySecretEntricher(EnricherContext buildContext) {
-        super(buildContext, ENCRICHER_NAME);
+    public DockerRegistrySecretEnricher(EnricherContext buildContext) {
+        super(buildContext, ENRICHER_NAME);
     }
 
     @Override

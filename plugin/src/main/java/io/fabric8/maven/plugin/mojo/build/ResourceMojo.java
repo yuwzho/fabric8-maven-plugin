@@ -15,6 +15,18 @@
  */
 package io.fabric8.maven.plugin.mojo.build;
 
+<<<<<<< HEAD
+=======
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.util.*;
+import java.util.Arrays;
+import java.util.Objects;
+
+import javax.validation.ConstraintViolationException;
+
+>>>>>>> add yaml resource
 import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.extensions.Templates;
@@ -28,6 +40,7 @@ import io.fabric8.maven.core.handler.ServiceHandler;
 import io.fabric8.maven.core.service.ComposeService;
 import io.fabric8.maven.core.service.Fabric8ServiceException;
 import io.fabric8.maven.core.util.*;
+import io.fabric8.maven.core.util.Constants;
 import io.fabric8.maven.docker.AbstractDockerMojo;
 import io.fabric8.maven.docker.config.ConfigHelper;
 import io.fabric8.maven.docker.config.ImageConfiguration;
@@ -45,6 +58,7 @@ import io.fabric8.maven.plugin.enricher.EnricherManager;
 import io.fabric8.maven.plugin.generator.GeneratorManager;
 import io.fabric8.openshift.api.model.DeploymentConfig;
 import io.fabric8.openshift.api.model.Template;
+import io.fabric8.utils.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -394,9 +408,12 @@ public class ResourceMojo extends AbstractResourceMojo {
         // Add resources found in subdirectories of resourceDir, with a certain profile
         // applied
         addProfiledResourcesFromSubirectories(builder, resourceDir, enricherManager);
+        addXmlResourcesConfig(builder);
 
         return builder.build();
     }
+
+    protected void addXmlResourcesConfig(KubernetesListBuilder builder) {}
 
     private void addProfiledResourcesFromSubirectories(KubernetesListBuilder builder, File resourceDir, EnricherManager enricherManager) throws IOException, MojoExecutionException {
         File[] profileDirs = resourceDir.listFiles(new FileFilter() {
@@ -407,6 +424,10 @@ public class ResourceMojo extends AbstractResourceMojo {
         });
         if (profileDirs != null) {
             for (File profileDir : profileDirs) {
+                if (!needEnricher(profileDir.getName())) {
+                    continue;
+                }
+
                 Profile profile = ProfileUtil.findProfile(profileDir.getName(), resourceDir);
                 if (profile == null) {
                     throw new MojoExecutionException(String.format("Invalid profile '%s' given as directory in %s. " +
@@ -429,10 +450,9 @@ public class ResourceMojo extends AbstractResourceMojo {
         }
     }
 
-    private KubernetesListBuilder generateAppResources(List<ImageConfiguration> images, EnricherManager enricherManager) throws IOException, MojoExecutionException {
+    protected KubernetesListBuilder generateAppResources(List<ImageConfiguration> images, EnricherManager enricherManager) throws IOException, MojoExecutionException {
         Path composeFilePath = checkComposeConfig();
         ComposeService composeUtil = new ComposeService(komposeBinDir, composeFilePath, log);
-
         try {
             File[] resourceFiles = KubernetesResourceUtil.listResourceFragments(resourceDir);
             File[] composeResourceFiles = composeUtil.convertToKubeFragments();
@@ -791,6 +811,34 @@ public class ResourceMojo extends AbstractResourceMojo {
 
     private boolean isPomProject() {
         return "pom".equals(project.getPackaging());
+    }
+
+    protected String[] getEnricherWhiteList() {
+        return null;
+    }
+
+    private final static String[] _enricherBlackList = {"secret"};
+    protected String[] getEnricherBlackList() {
+        return _enricherBlackList;
+    }
+
+    // in white list and not in the black list
+    // if white list is null, means it contains all things
+    // if black list is null, means it contains nothing.
+    private boolean needEnricher(String name) {
+        if (getEnricherWhiteList() == null && !arrayContains(getEnricherBlackList(), name)) {
+            return true;
+        }
+
+        if (getEnricherWhiteList() != null && arrayContains(getEnricherWhiteList(), name)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean arrayContains(String[] array, String name) {
+        return array != null && Arrays.asList(array).contains(name);
     }
 
 }

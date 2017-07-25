@@ -55,20 +55,19 @@
                     <execution>
                         <goals>
                             <goal>resource</goal>
-                            <!--<goal>build</goal>-->
+                            <goal>secret</goal>
                         </goals>
                     </execution>
                 </executions>
-                <!--<configuration>-->
-                    <!--<secrets>-->
-                        <!--<secretConfig>-->
-                            <!--<dockerId>yuwzhoacr</dockerId>-->
-                            <!--<name>yuwzhoacr</name>-->
-                        <!--</secretConfig>-->
-                    <!--</secrets>-->
-                <!--</configuration>-->
+                <configuration>
+                    <secrets>
+                        <secretConfig>
+                            <dockerId>yuwzhoacr</dockerId>
+                            <name>mydockerkey</name>
+                        </secretConfig>
+                    </secrets>
+                </configuration>
             </plugin>
-
         </plugins>
     </build>
 

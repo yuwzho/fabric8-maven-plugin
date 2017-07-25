@@ -57,6 +57,7 @@
     - spring-boot
     - docker-image
 # end::default[]
+# Can also process secret file in to general yaml
 - name: secret
   enricher:
     includes:
