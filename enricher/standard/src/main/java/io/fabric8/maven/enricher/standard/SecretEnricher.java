@@ -38,6 +38,8 @@ public abstract class SecretEnricher extends BaseEnricher {
                 if (data == null) {
                     return;
                 }
+                // remove the annotation key
+                annotation.remove(getAnnotationKey());
                 secretBuilder.addToData(data);
             }
         });
