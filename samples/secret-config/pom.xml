@@ -56,12 +56,14 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <secrets>
-                        <secretConfig>
-                            <dockerId>yuwzhoacr</dockerId>
-                            <name>yuwzhoacr</name>
-                        </secretConfig>
-                    </secrets>
+                    <resources>
+                        <secrets>
+                            <secret>
+                                <dockerId>yuwzhoacr</dockerId>
+                                <name>yuwzhoacr</name>
+                            </secret>
+                        </secrets>
+                    </resources>
                 </configuration>
             </plugin>
         </plugins>

@@ -116,7 +116,7 @@ public class ResourceMojo extends AbstractResourceMojo {
 
     // Resource specific configuration for this plugin
     @Parameter
-    private ResourceConfig resources;
+    protected ResourceConfig resources;
 
     // Reusing image configuration from d-m-p
     @Parameter
@@ -395,12 +395,9 @@ public class ResourceMojo extends AbstractResourceMojo {
         // Add resources found in subdirectories of resourceDir, with a certain profile
         // applied
         addProfiledResourcesFromSubirectories(builder, resourceDir, enricherManager);
-        addXmlResourcesConfig(builder);
-
         return builder.build();
     }
 
-    protected void addXmlResourcesConfig(KubernetesListBuilder builder) {}
 
     private void addProfiledResourcesFromSubirectories(KubernetesListBuilder builder, File resourceDir, EnricherManager enricherManager) throws IOException, MojoExecutionException {
         File[] profileDirs = resourceDir.listFiles(new FileFilter() {
@@ -732,7 +729,7 @@ public class ResourceMojo extends AbstractResourceMojo {
         }
     }
 
-    private void addConfiguredResources(KubernetesListBuilder builder, List<ImageConfiguration> images) {
+    protected void addConfiguredResources(KubernetesListBuilder builder, List<ImageConfiguration> images) {
 
         log.verbose("Adding resources from plugin configuration");
         addServices(builder, resources.getServices());

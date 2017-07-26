@@ -31,9 +31,6 @@ import java.util.Map;
 @Mojo(name = "secrets", defaultPhase = LifecyclePhase.PROCESS_RESOURCES, requiresDependencyResolution = ResolutionScope.COMPILE)
 public class SecretsMojo extends ResourceMojo {
 
-    @Parameter(property = "fabric8.secrets")
-    private List<SecretConfig> secrets;
-
     private final static String[] _enricherBlcakList = null;
     private final static String[] _enricherWhiteList = {SecretConstants.FOLDER_NAME};
 
@@ -55,11 +52,18 @@ public class SecretsMojo extends ResourceMojo {
 
     @Override
     protected KubernetesListBuilder generateAppResources(List<ImageConfiguration> images, EnricherManager enricherManager) throws IOException, MojoExecutionException {
-        return new KubernetesListBuilder();
+        KubernetesListBuilder builder = new KubernetesListBuilder();
+        if (resources != null) {
+            addConfiguredResources(builder, images);
+        }
+        return builder;
     }
 
     @Override
-    protected void addXmlResourcesConfig(KubernetesListBuilder builder) {
+    protected void addConfiguredResources(KubernetesListBuilder builder, List<ImageConfiguration> images) {
+        log.verbose("Adding secrets resources from plugin configuration");
+        List<SecretConfig> secrets = resources.getSecrets();
+        if (secrets == null || secrets.size() == 0) { return; }
         for (int i = 0; i < secrets.size(); i++) {
             SecretConfig secretConfig = secrets.get(i);
             if (Strings.isNullOrBlank(secretConfig.name)) {
