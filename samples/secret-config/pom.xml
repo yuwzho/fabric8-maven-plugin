@@ -52,6 +52,8 @@
                         <goals>
                             <goal>resource</goal>
                             <goal>secrets</goal>
+                            <goal>apply-secrets</goal>
+                            <goal>apply</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -59,7 +61,7 @@
                     <resources>
                         <secrets>
                             <secret>
-                                <dockerId>yuwzhoacr</dockerId>
+                                <dockerId>yuwzhoacr.azurecr.io</dockerId>
                                 <name>yuwzhoacr</name>
                             </secret>
                         </secrets>

@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: yuwzhospringbootdocker
+  name: ${project.artifactId}
   labels:
     run: spring
 spec:
@@ -21,6 +21,7 @@ spec:
     spec:
       containers:
       - image: yuwzhoacr.azurecr.io/gs-spring-boot-docker
-        name: spring-boot
+        name: spring
+      imagePullPolicy: Always
       imagePullSecrets:
         - name: mydockerkey
