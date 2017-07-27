@@ -61,8 +61,8 @@
                     <resources>
                         <secrets>
                             <secret>
-                                <dockerId>yuwzhoacr.azurecr.io</dockerId>
-                                <name>yuwzhoacr</name>
+                                <dockerId>docker.io</dockerId>
+                                <name>username</name>
                             </secret>
                         </secrets>
                     </resources>
