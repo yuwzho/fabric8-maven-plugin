@@ -29,6 +29,10 @@
         <version>1.3.6.RELEASE</version>
     </parent>
 
+    <properties>
+        <docker.registry>yuwzhoacr.azurecr.io</docker.registry>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -52,17 +56,20 @@
                         <goals>
                             <goal>resource</goal>
                             <goal>secrets</goal>
+                            <goal>build</goal>
+                            <goal>push</goal>
                             <goal>apply-secrets</goal>
                             <goal>apply</goal>
                         </goals>
                     </execution>
                 </executions>
                 <configuration>
+                    <registry>${docker.registry}</registry>
                     <resources>
                         <secrets>
                             <secret>
-                                <dockerId>docker.io</dockerId>
-                                <name>username</name>
+                                <dockerId>${docker.registry}</dockerId>
+                                <name>yuwzhoacr</name>
                             </secret>
                         </secrets>
                     </resources>

@@ -20,8 +20,10 @@ spec:
         run: spring
     spec:
       containers:
-      - image: yuwzhoacr.azurecr.io/gs-spring-boot-docker
+      - image: ${docker.registry}/fabric8/${project.artifactId}
         name: spring
+        ports:
+        - containerPort: 8080
       imagePullPolicy: Always
       imagePullSecrets:
         - name: mydockerkey
