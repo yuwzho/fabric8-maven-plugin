@@ -9,8 +9,8 @@ import java.io.File;
 
 @Mojo(name = "apply-secrets", requiresDependencyResolution = ResolutionScope.COMPILE, defaultPhase = LifecyclePhase.INSTALL)
 public class ApplySecretMojo extends ApplyMojo {
-    public static final String DEFAULT_KUBERNETES_MANIFEST = "${basedir}/target/classes/META-INF/fabric8/secrets/kubernetes.yml";
-    public static final String DEFAULT_OPENSHIFT_MANIFEST = "${basedir}/target/classes/META-INF/fabric8/secrets/openshift.yml";
+    public static final String DEFAULT_KUBERNETES_MANIFEST = "${project.build.outputDirectory}/META-INF/fabric8/secrets/kubernetes.yml";
+    public static final String DEFAULT_OPENSHIFT_MANIFEST = "${project.build.outputDirectory}/META-INF/fabric8/secrets/openshift.yml";
 
     /**
      * The generated kubernetes YAML file
