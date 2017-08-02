@@ -30,7 +30,8 @@
     </parent>
 
     <properties>
-        <docker.registry>yuwzhoacr.azurecr.io</docker.registry>
+        <!-- replace it with your private docker registry url -->
+        <docker.registry>docker.io</docker.registry>
     </properties>
 
     <dependencies>
@@ -70,7 +71,7 @@
                         <secrets>
                             <secret>
                                 <dockerId>${docker.registry}</dockerId>
-                                <name>yuwzhoacr</name>
+                                <name>mydockerkey1</name>
                             </secret>
                         </secrets>
                     </resources>
