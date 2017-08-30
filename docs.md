@@ -88,7 +88,7 @@ Use sample [secret-config](samples/secret-config) as example, to deploy a string
 Property | Required | Description
 -- | -- | --
 ${imageName} | true | Specifies the Docker image name: <br/> Specifies the Docker image name. Valid image name formats are listed as below.<br>- Docker Hub image: `[hub-user/]repo-name[:tag]`; `tag` is optional, default value is **latest**.<br>- Private registry image: `hostname/repo-name[:tag]`; `tag` is optional, default value is **latest**.
-${dockerKeyName} | false | The docker registry authentication name store in kubernetes cluster. If the docker image is from a private docker registry, this one is required.
+${dockerKeyName} | false<br/> *Actually I dont know how to set this field, if there is docker.yml, this field should be true. But if using a public docker image, this field should be false* | The docker registry authentication name store in kubernetes cluster. If the docker image is from a private docker registry, this one is required.
 ${docker.registry} | false | Docker registry hostname. Default is **docker.io**. If it is a private docker registry, it should be the `Id` from your Maven `settings.xml`'s `server` section with username and password.
 
 **Bind goals to lifecycle**
