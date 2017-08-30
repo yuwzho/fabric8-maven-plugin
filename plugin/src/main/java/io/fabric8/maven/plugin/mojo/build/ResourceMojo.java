@@ -39,15 +39,25 @@ import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.maven.enricher.api.util.InitContainerHandler;
 import io.fabric8.maven.enricher.standard.VolumePermissionEnricher;
 import io.fabric8.maven.generator.api.GeneratorContext;
-import io.fabric8.maven.plugin.converter.*;
+import io.fabric8.maven.plugin.converter.DeploymentConfigOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.DeploymentOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.KubernetesToOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.NamespaceOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.ReplicSetOpenShiftConverter;
 import io.fabric8.maven.plugin.enricher.EnricherManager;
 import io.fabric8.maven.plugin.generator.GeneratorManager;
 import io.fabric8.openshift.api.model.DeploymentConfig;
 import io.fabric8.openshift.api.model.Template;
+import io.fabric8.utils.Lists;
+import io.fabric8.utils.Strings;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.*;
+import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.shared.filtering.MavenFileFilter;
 import org.apache.maven.shared.filtering.MavenFilteringException;
 
@@ -57,7 +67,14 @@ import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 import static io.fabric8.maven.core.util.Constants.RESOURCE_APP_CATALOG_ANNOTATION;
 import static io.fabric8.maven.plugin.mojo.build.ApplyMojo.DEFAULT_OPENSHIFT_MANIFEST;
@@ -91,6 +108,12 @@ public class ResourceMojo extends AbstractResourceMojo {
     private File resourceDir;
 
     /**
+     * Folder where to find project specific files
+     */
+    @Parameter(property = "fabric8.resourceDirOpenShiftOverride", defaultValue = "${basedir}/src/main/fabric8-openshift-override")
+    private File resourceDirOpenShiftOverride;
+
+    /**
      * Should we use the project's compile-time classpath to scan for additional enrichers/generators?
      */
     @Parameter(property = "fabric8.useProjectClasspath", defaultValue = "false")
@@ -101,6 +124,12 @@ public class ResourceMojo extends AbstractResourceMojo {
      */
     @Parameter(property = "fabric8.workDir", defaultValue = "${project.build.directory}/fabric8")
     private File workDir;
+
+    /**
+     * The fabric8 working directory
+     */
+    @Parameter(property = "fabric8.workDirOpenShiftOverride", defaultValue = "${project.build.directory}/fabric8-openshift-override")
+    private File workDirOpenShiftOverride;
 
     /**
      * Directory to lookup for docker compose files
@@ -210,9 +239,11 @@ public class ResourceMojo extends AbstractResourceMojo {
     private PlatformMode platformMode;
 
     private OpenShiftDependencyResources openshiftDependencyResources;
+    private OpenShiftOverrideResources openShiftOverrideResources;
 
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
         clusterAccess = new ClusterAccess(namespace);
+
         try {
             lateInit();
 
@@ -368,6 +399,9 @@ public class ResourceMojo extends AbstractResourceMojo {
 
         // Manager for calling enrichers.
         openshiftDependencyResources = new OpenShiftDependencyResources(log);
+
+        loadOpenShiftOverrideResources();
+
         EnricherContext.Builder ctxBuilder = new EnricherContext.Builder()
             .project(project)
             .session(session)
@@ -389,8 +423,26 @@ public class ResourceMojo extends AbstractResourceMojo {
         // Add resources found in subdirectories of resourceDir, with a certain profile
         // applied
         addProfiledResourcesFromSubirectories(builder, resourceDir, enricherManager);
-
         return builder.build();
+    }
+
+    private void loadOpenShiftOverrideResources() throws MojoExecutionException, IOException {
+        openShiftOverrideResources = new OpenShiftOverrideResources(log);
+
+        if (resourceDirOpenShiftOverride.isDirectory() && resourceDirOpenShiftOverride.exists()) {
+            File[] resourceFiles = KubernetesResourceUtil.listResourceFragments(resourceDirOpenShiftOverride);
+            if (resourceFiles.length > 0) {
+                String defaultName = MavenUtil.createDefaultResourceName(project);
+                KubernetesListBuilder builder = KubernetesResourceUtil.readResourceFragmentsFrom(
+                        KubernetesResourceUtil.DEFAULT_RESOURCE_VERSIONING,
+                        defaultName,
+                        mavenFilterFiles(resourceFiles, this.workDirOpenShiftOverride));
+                KubernetesList list = builder.build();
+                for (HasMetadata item : list.getItems()) {
+                    openShiftOverrideResources.addOpenShiftOverride(item);
+                }
+            }
+        }
     }
 
     private void addProfiledResourcesFromSubirectories(KubernetesListBuilder builder, File resourceDir, EnricherManager enricherManager) throws IOException, MojoExecutionException {
@@ -427,7 +479,6 @@ public class ResourceMojo extends AbstractResourceMojo {
     private KubernetesListBuilder generateAppResources(List<ImageConfiguration> images, EnricherManager enricherManager) throws IOException, MojoExecutionException {
         Path composeFilePath = checkComposeConfig();
         ComposeService composeUtil = new ComposeService(komposeBinDir, composeFilePath, log);
-
         try {
             File[] resourceFiles = KubernetesResourceUtil.listResourceFragments(resourceDir);
             File[] composeResourceFiles = composeUtil.convertToKubeFragments();
@@ -511,7 +562,7 @@ public class ResourceMojo extends AbstractResourceMojo {
         builder = KubernetesResourceUtil.readResourceFragmentsFrom(
             KubernetesResourceUtil.DEFAULT_RESOURCE_VERSIONING,
             defaultName,
-            mavenFilterFiles(resourceFiles));
+                mavenFilterFiles(resourceFiles, this.workDir));
         return builder;
     }
 
@@ -540,6 +591,8 @@ public class ResourceMojo extends AbstractResourceMojo {
                         continue;
                     }
                 }
+                item = openShiftOverrideResources.overrideResource(item);
+
                 HasMetadata converted = convertKubernetesItemToOpenShift(item);
                 if (converted != null && !isTargetPlatformKubernetes(item)) {
                     objects.add(converted);
@@ -723,8 +776,49 @@ public class ResourceMojo extends AbstractResourceMojo {
     private void addConfiguredResources(KubernetesListBuilder builder, List<ImageConfiguration> images) {
 
         log.verbose("Adding resources from plugin configuration");
+        addSecrets(builder);
         addServices(builder, resources.getServices());
         addController(builder, images);
+    }
+
+    private void addSecrets(KubernetesListBuilder builder) {
+        log.verbose("Adding secrets resources from plugin configuration");
+        List<SecretConfig> secrets = resources.getSecrets();
+        if (Lists.isNullOrEmpty(secrets)) { return; }
+        for (int i = 0; i < secrets.size(); i++) {
+            SecretConfig secretConfig = secrets.get(i);
+            if (Strings.isNullOrBlank(secretConfig.getName())) {
+                log.warn("Secret name is empty. You should provide a proper name for the secret");
+                continue;
+            }
+
+            Map<String, String> data = new HashMap<>();
+            String type = "";
+            ObjectMeta metadata = new ObjectMetaBuilder()
+                    .withNamespace(secretConfig.getNamespace())
+                    .withName(secretConfig.getName())
+                    .build();
+
+            // docker-registry
+            if (secretConfig.getDockerServerId() != null) {
+                String dockerSecret = DockerServerUtil.getDockerJsonConfigString(settings, secretConfig.getDockerServerId());
+                if (Strings.isNullOrBlank(dockerSecret)) {
+                    log.warn("Docker secret with id " + secretConfig.getDockerServerId() + " cannot be found in maven settings");
+                    continue;
+                }
+                data.put(SecretConstants.DOCKER_DATA_KEY, Base64Util.encodeToString(dockerSecret));
+                type = SecretConstants.DOCKER_CONFIG_TYPE;
+            }
+            // TODO: generic secret (not supported for now)
+
+            if (Strings.isNullOrBlank(type) || data.isEmpty()) {
+                log.warn("No data can be found for docker secret with id " + secretConfig.getDockerServerId());
+                continue;
+            }
+
+            Secret secret = new SecretBuilder().withData(data).withMetadata(metadata).withType(type).build();
+            builder.addToSecretItems(i, secret);
+        }
     }
 
     private void addController(KubernetesListBuilder builder, List<ImageConfiguration> images) {
@@ -735,16 +829,16 @@ public class ResourceMojo extends AbstractResourceMojo {
         }
     }
 
-    private File[] mavenFilterFiles(File[] resourceFiles) throws MojoExecutionException {
-        if (!workDir.exists()) {
-            if (!workDir.mkdirs()) {
-                throw new MojoExecutionException("Cannot create working dir " + workDir);
+    private File[] mavenFilterFiles(File[] resourceFiles, File outDir) throws MojoExecutionException {
+        if (!outDir.exists()) {
+            if (!outDir.mkdirs()) {
+                throw new MojoExecutionException("Cannot create working dir " + outDir);
             }
         }
         File[] ret = new File[resourceFiles.length];
         int i = 0;
         for (File resource : resourceFiles) {
-            File targetFile = new File(workDir, resource.getName());
+            File targetFile = new File(outDir, resource.getName());
             try {
                 mavenFileFilter.copyFile(resource, targetFile, true,
                                          project, null, false, "utf8", session);
@@ -787,5 +881,4 @@ public class ResourceMojo extends AbstractResourceMojo {
     private boolean isPomProject() {
         return "pom".equals(project.getPackaging());
     }
-
 }
