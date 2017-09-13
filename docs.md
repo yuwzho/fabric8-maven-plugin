@@ -18,7 +18,7 @@ Include this configuration in your project `pom.xml`:
 <plugin>
   <groupId>io.fabric8</groupId>
   <artifactId>fabric8-maven-plugin</artifactId>
-  <version>latest</version>
+  <version>3.5.30</version>
   ...
 </plugin>
 ```
