@@ -45,7 +45,7 @@ fabric8:apply | apply the kubernetes resource list created by goal `fabric8:reso
     
 ### example
 
-Use sample [secret-config](samples/secret-config) as example, to deploy a string boot Hello World project to kubernetes.
+Use sample [secret-config](https://github.com/fabric8io/fabric8-maven-plugin/tree/master/samples/secret-config) as example, to deploy a string boot Hello World project to kubernetes.
 
 **create kubernetes yaml resource fragments** 
 1. create a `deployment.yml` to contain a Deployment resource.
